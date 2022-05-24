@@ -1,3 +1,11 @@
+# Mac only
+.DS_Store
+
+# for IDE
+.idea
+.vscode
+
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
