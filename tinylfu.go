@@ -68,7 +68,7 @@ func loadtinyLFUOptions(options ...TinyLFUOptions) *tinyLFUOptions {
 	return opts
 }
 
-func (adp *tinyLFU) MSet(
+func (lfu *tinyLFU) MSet(
 	ctx context.Context, keyVals map[string][]byte, ttl time.Duration, options ...MSetOptions,
 ) error {
 	if len(keyVals) == 0 {
@@ -78,7 +78,7 @@ func (adp *tinyLFU) MSet(
 	// load options
 	o := loadMSetOptions(options...)
 	// offset is used to adjust the ttl preventing expiring at the same time
-	offset := adp.offset
+	offset := lfu.offset
 	if offset == defaultOffset {
 		offset = ttl / 10
 		if offset > maxOffset {
@@ -86,13 +86,13 @@ func (adp *tinyLFU) MSet(
 		}
 	}
 
-	adp.mut.Lock()
-	defer adp.mut.Unlock()
+	lfu.mut.Lock()
+	defer lfu.mut.Unlock()
 
 	for key, b := range keyVals {
 		t := ttl
 		if offset > 0 {
-			t += time.Duration(adp.rand.Int63n(int64(offset)))
+			t += time.Duration(lfu.rand.Int63n(int64(offset)))
 		}
 
 		cost := len(b)
@@ -100,7 +100,7 @@ func (adp *tinyLFU) MSet(
 			o.onCostAdd(key, cost)
 		}
 
-		adp.lfu.Set(&tinylfu.Item{
+		lfu.lfu.Set(&tinylfu.Item{
 			Key:      key,
 			Value:    b,
 			ExpireAt: time.Now().Add(t),
@@ -115,13 +115,13 @@ func (adp *tinyLFU) MSet(
 	return nil
 }
 
-func (adp *tinyLFU) MGet(ctx context.Context, keys []string) ([]Value, error) {
-	adp.mut.Lock()
-	defer adp.mut.Unlock()
+func (lfu *tinyLFU) MGet(ctx context.Context, keys []string) ([]Value, error) {
+	lfu.mut.Lock()
+	defer lfu.mut.Unlock()
 
 	vals := make([]Value, len(keys))
 	for i, key := range keys {
-		val, ok := adp.lfu.Get(key)
+		val, ok := lfu.lfu.Get(key)
 		if !ok {
 			vals[i] = Value{Valid: false, Bytes: nil}
 			continue
@@ -134,12 +134,12 @@ func (adp *tinyLFU) MGet(ctx context.Context, keys []string) ([]Value, error) {
 	return vals, nil
 }
 
-func (adp *tinyLFU) Del(ctx context.Context, keys ...string) error {
-	adp.mut.Lock()
-	defer adp.mut.Unlock()
+func (lfu *tinyLFU) Del(ctx context.Context, keys ...string) error {
+	lfu.mut.Lock()
+	defer lfu.mut.Unlock()
 
 	for _, key := range keys {
-		adp.lfu.Del(key)
+		lfu.lfu.Del(key)
 	}
 
 	return nil

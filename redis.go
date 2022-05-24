@@ -2,30 +2,43 @@ package cache
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 )
 
+// Redis support two interface: Adapter and Pubsub
+type Redis interface {
+	Adapter
+	Pubsub
+}
+
 // NewRedis generates Adapter with go-redis
-func NewRedis(ring *redis.Ring) Adapter {
+func NewRedis(ring *redis.Ring) Redis {
 	return &rds{
-		ring: ring,
+		ring:     ring,
+		messChan: make(chan Message),
 	}
 }
 
 type rds struct {
-	ring *redis.Ring
+	ring       *redis.Ring
+	subscriber *redis.PubSub
+
+	subOnce   sync.Once
+	closeOnce sync.Once
+	messChan  chan Message
 }
 
-func (adp *rds) MSet(
+func (r *rds) MSet(
 	ctx context.Context, keyVals map[string][]byte, ttl time.Duration, options ...MSetOptions,
 ) error {
 	if len(keyVals) == 0 {
 		return nil
 	}
 
-	_, err := adp.ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err := r.ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		// set multiple pairs
 		pairSlice := make([]interface{}, len(keyVals)*2)
 		i := 0
@@ -48,8 +61,8 @@ func (adp *rds) MSet(
 	return err
 }
 
-func (adp *rds) MGet(ctx context.Context, keys []string) ([]Value, error) {
-	vals, err := adp.ring.MGet(ctx, keys...).Result()
+func (r *rds) MGet(ctx context.Context, keys []string) ([]Value, error) {
+	vals, err := r.ring.MGet(ctx, keys...).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +86,52 @@ func (adp *rds) MGet(ctx context.Context, keys []string) ([]Value, error) {
 	return values, nil
 }
 
-func (adp *rds) Del(ctx context.Context, keys ...string) error {
-	_, err := adp.ring.Del(ctx, keys...).Result()
+func (r *rds) Del(ctx context.Context, keys ...string) error {
+	_, err := r.ring.Del(ctx, keys...).Result()
 
 	return err
+}
+
+type rdsMessage struct {
+	topic   string
+	content string
+}
+
+func (m *rdsMessage) Topic() string {
+	return m.topic
+}
+
+func (m *rdsMessage) Content() []byte {
+	return []byte(m.content)
+}
+
+func (r *rds) Pub(ctx context.Context, topic string, message []byte) error {
+	return r.ring.Publish(ctx, topic, message).Err()
+}
+
+func (r *rds) Sub(ctx context.Context, topic ...string) <-chan Message {
+	r.subOnce.Do(func() {
+		r.subscriber = r.ring.Subscribe(ctx, topic...)
+
+		go func() {
+			for mess := range r.subscriber.Channel() {
+				r.messChan <- &rdsMessage{
+					topic:   mess.Channel,
+					content: mess.Payload,
+				}
+			}
+
+			close(r.messChan)
+		}()
+	})
+
+	return r.messChan
+}
+
+func (r *rds) Close() {
+	r.closeOnce.Do(func() {
+		if r.subscriber != nil {
+			r.subscriber.Close()
+		}
+	})
 }

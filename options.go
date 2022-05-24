@@ -8,9 +8,6 @@ type MarshalFunc func(interface{}) ([]byte, error)
 // The default is json.Unmarshal
 type UnmarshalFunc func([]byte, interface{}) error
 
-// CallbackFunc means the callback function triggered at the specified moment.
-type CallbackFunc func(prefix string, key string, value interface{})
-
 // ServiceOptions is an alias for functional argument.
 type ServiceOptions func(opts *serviceOptions)
 
@@ -18,10 +15,11 @@ type ServiceOptions func(opts *serviceOptions)
 type serviceOptions struct {
 	marshalFunc   MarshalFunc
 	unmarshalFunc UnmarshalFunc
-	onCacheHit    CallbackFunc
-	onCacheMiss   CallbackFunc
-	onLCCostAdd   CallbackFunc
-	onLCCostEvict CallbackFunc
+	onCacheHit    func(prefix string, key string, count int)
+	onCacheMiss   func(prefix string, key string, count int)
+	onLCCostAdd   func(prefix string, key string, cost int)
+	onLCCostEvict func(prefix string, key string, cost int)
+	pubsub        Pubsub
 }
 
 // WithMarshalFunc sets up the specified marshal funciton.
@@ -40,29 +38,36 @@ func WithUnmarshalFunc(f UnmarshalFunc) ServiceOptions {
 	}
 }
 
+// WithPubSub is used to evict keys in local cache
+func WithPubSub(pb Pubsub) ServiceOptions {
+	return func(opts *serviceOptions) {
+		opts.pubsub = pb
+	}
+}
+
 // OnCacheHitFunc sets up the callback function on cache hitted
-func OnCacheHitFunc(f CallbackFunc) ServiceOptions {
+func OnCacheHitFunc(f func(prefix string, key string, count int)) ServiceOptions {
 	return func(opts *serviceOptions) {
 		opts.onCacheHit = f
 	}
 }
 
 // OnCacheMissFunc sets up the callback function on cache missed
-func OnCacheMissFunc(f CallbackFunc) ServiceOptions {
+func OnCacheMissFunc(f func(prefix string, key string, count int)) ServiceOptions {
 	return func(opts *serviceOptions) {
 		opts.onCacheMiss = f
 	}
 }
 
 // OnLocalCacheCostAddFunc sets up the callback function on adding the cost of key in local cache
-func OnLocalCacheCostAddFunc(f CallbackFunc) ServiceOptions {
+func OnLocalCacheCostAddFunc(f func(prefix string, key string, cost int)) ServiceOptions {
 	return func(opts *serviceOptions) {
 		opts.onLCCostAdd = f
 	}
 }
 
 // OnLocalCacheCostEvictFunc sets up the callback function on evicting the cost of key in local cache
-func OnLocalCacheCostEvictFunc(f CallbackFunc) ServiceOptions {
+func OnLocalCacheCostEvictFunc(f func(prefix string, key string, cost int)) ServiceOptions {
 	return func(opts *serviceOptions) {
 		opts.onLCCostEvict = f
 	}

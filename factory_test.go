@@ -55,7 +55,7 @@ func TestFactorySuite(t *testing.T) {
 	suite.Run(t, new(factorySuite))
 }
 
-func (s *factorySuite) TestNewWithOnlyMarshal() {
+func (s *factorySuite) TestNewFactoryWithOnlyMarshal() {
 	defer func() {
 		r := recover()
 		s.Require().NotNil(r)
@@ -64,7 +64,7 @@ func (s *factorySuite) TestNewWithOnlyMarshal() {
 	NewFactory(s.rds, s.lfu, WithMarshalFunc(json.Marshal))
 }
 
-func (s *factorySuite) TestNewWithOnlyUnmarshal() {
+func (s *factorySuite) TestNewFactoryWithOnlyUnmarshal() {
 	defer func() {
 		r := recover()
 		s.Require().NotNil(r)
@@ -73,13 +73,13 @@ func (s *factorySuite) TestNewWithOnlyUnmarshal() {
 	NewFactory(s.rds, s.lfu, WithUnmarshalFunc(json.Unmarshal))
 }
 
-func (s *factorySuite) TestNewWithBoth() {
+func (s *factorySuite) TestNewFactoryWithBoth() {
 	ser := NewFactory(s.rds, s.lfu, WithMarshalFunc(xml.Marshal), WithUnmarshalFunc(xml.Unmarshal)).(*factory)
 	s.Require().True(reflect.ValueOf(xml.Marshal).Pointer() == reflect.ValueOf(ser.marshal).Pointer())
 	s.Require().True(reflect.ValueOf(xml.Unmarshal).Pointer() == reflect.ValueOf(ser.unmarshal).Pointer())
 }
 
-func (s *factorySuite) TestCreateWithoutCacheType() {
+func (s *factorySuite) TestNewCacheWithoutCacheType() {
 	defer func() {
 		r := recover()
 		s.Require().NotNil(r)
@@ -88,7 +88,7 @@ func (s *factorySuite) TestCreateWithoutCacheType() {
 	s.factory.NewCache([]Setting{{Prefix: "noCacheType"}})
 }
 
-func (s *factorySuite) TestCreateWithEmptyPrefix() {
+func (s *factorySuite) TestNewCacheWithEmptyPrefix() {
 	defer func() {
 		r := recover()
 		s.Require().NotNil(r)
@@ -97,7 +97,7 @@ func (s *factorySuite) TestCreateWithEmptyPrefix() {
 	s.factory.NewCache([]Setting{{Prefix: ""}})
 }
 
-func (s *factorySuite) TestCreateWithDuplicatedPrefix() {
+func (s *factorySuite) TestNewCacheWithDuplicatedPrefix() {
 	defer func() {
 		r := recover()
 		s.Require().NotNil(r)
@@ -115,7 +115,7 @@ func (s *factorySuite) TestCreateWithDuplicatedPrefix() {
 	})
 }
 
-func (s *factorySuite) TestCreateWithOnlyMarshal() {
+func (s *factorySuite) TestNewCacheWithOnlyMarshal() {
 	defer func() {
 		r := recover()
 		s.Require().NotNil(r)
@@ -131,7 +131,7 @@ func (s *factorySuite) TestCreateWithOnlyMarshal() {
 	})
 }
 
-func (s *factorySuite) TestCreateWithOnlyUnmarshal() {
+func (s *factorySuite) TestNewCacheWithOnlyUnmarshal() {
 	defer func() {
 		r := recover()
 		s.Require().NotNil(r)

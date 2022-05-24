@@ -46,6 +46,7 @@ const (
 // Factory is initialized in the main.go, and used to generate the Cache for each business logic
 type Factory interface {
 	NewCache(settings []Setting) Cache
+	Close()
 }
 
 // NewFactory returns the Factory initialized in the main.go.

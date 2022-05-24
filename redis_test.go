@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,7 +12,8 @@ import (
 )
 
 const (
-	mockRdsString = "mock-string"
+	mockRdsPayload = "mock-rds-payload"
+	mockRdsString  = "mock-rds-string"
 )
 
 var (
@@ -234,4 +236,52 @@ func (s *redisSuite) TestDel() {
 
 		s.TearDownTest()
 	}
+}
+
+func (s *redisSuite) TestPub() {
+	sub := s.rds.ring.Subscribe(mockRdsCTX, evictTopic)
+	pause := make(chan struct{})
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		close(pause)
+		msg, err := sub.ReceiveMessage(mockRdsCTX)
+
+		s.Require().NoError(err)
+		s.Require().Equal(mockRdsPayload, msg.Payload)
+	}()
+
+	time.Sleep(time.Millisecond * 50)
+	<-pause
+	s.Require().NoError(s.rds.Pub(mockRdsCTX, evictTopic, []byte(mockRdsPayload)))
+
+	wg.Wait()
+}
+
+func (s *redisSuite) TestSub() {
+	wg := &sync.WaitGroup{}
+	pause := make(chan struct{})
+	pause2 := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		close(pause)
+		for mess := range s.rds.Sub(mockRdsCTX, evictTopic) {
+			s.Require().Equal([]byte(mockRdsPayload), mess.Content())
+			close(pause2)
+		}
+	}()
+
+	time.Sleep(time.Millisecond * 50)
+	<-pause
+	s.Require().NoError(s.ring.Publish(mockRdsCTX, evictTopic, []byte(mockRdsPayload)).Err())
+
+	<-pause2
+	s.rds.Close()
+	wg.Wait()
 }
