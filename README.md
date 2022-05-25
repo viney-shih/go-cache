@@ -12,6 +12,7 @@ Considering the flexibility, efficiency and consistency, we starts to build up o
 
 ## Features
 - **Easy to use** : provide a friendly interface to deal with both caching mechnaism by simple configuration. Limit the resource on single instance (pod) as well.
+- **Maintain consistency** : evict keys between distributed systems by `Pub-Sub` pattern.  
 - **Data compression** : provide customized marshal and unmarshal functions.
 - **Fix concurrency issue** : prevent data racing happened on single instance (pod).
 - **Metric** : provide callback functions to measure the performance. (i.e. hit rate, private cache usage, ...)
