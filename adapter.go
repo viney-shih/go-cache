@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Adapter is the interface when communicating with shared/local caches.
+// Adapter is the interface communicating with shared/local caches.
 type Adapter interface {
 	MGet(context context.Context, keys []string) ([]Value, error)
 	MSet(context context.Context, keyVals map[string][]byte, ttl time.Duration, options ...MSetOptions) error

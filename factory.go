@@ -1,13 +1,12 @@
 package cache
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-)
+	"sync"
 
-const (
-	packageKey = "ca"
-	delimiter  = ":"
+	"github.com/google/uuid"
 )
 
 var (
@@ -37,9 +36,11 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 		unmarshalFunc = o.unmarshalFunc
 	}
 
-	return &factory{
+	f := &factory{
+		id:            uuid.New().String(),
 		sharedCache:   sharedCache,
 		localCache:    localCache,
+		pubsub:        o.pubsub,
 		marshal:       marshalFunc,
 		unmarshal:     unmarshalFunc,
 		onCacheHit:    o.onCacheHit,
@@ -47,21 +48,31 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 		onLCCostAdd:   o.onLCCostAdd,
 		onLCCostEvict: o.onLCCostEvict,
 	}
+
+	// subscribing if necessary
+	f.subscribeEvictEvents(context.TODO())
+
+	return f
 }
 
 type factory struct {
 	sharedCache Adapter
 	localCache  Adapter
+	pubsub      Pubsub
 
 	marshal       MarshalFunc
 	unmarshal     UnmarshalFunc
-	onCacheHit    CallbackFunc
-	onCacheMiss   CallbackFunc
-	onLCCostAdd   CallbackFunc
-	onLCCostEvict CallbackFunc
+	onCacheHit    func(prefix string, key string, count int)
+	onCacheMiss   func(prefix string, key string, count int)
+	onLCCostAdd   func(prefix string, key string, cost int)
+	onLCCostEvict func(prefix string, key string, cost int)
+
+	id        string
+	closeOnce sync.Once
+	wg        sync.WaitGroup
 }
 
-func (s *factory) NewCache(settings []Setting) Cache {
+func (f *factory) NewCache(settings []Setting) Cache {
 	m := map[string]*config{}
 	for _, setting := range settings {
 		// check prefix
@@ -75,8 +86,8 @@ func (s *factory) NewCache(settings []Setting) Cache {
 
 		cfg := &config{
 			mGetter:   setting.MGetter,
-			marshal:   s.marshal,
-			unmarshal: s.unmarshal,
+			marshal:   f.marshal,
+			unmarshal: f.unmarshal,
 		}
 
 		// need to specify marshalFunc and unmarshalFunc at the same time
@@ -95,10 +106,10 @@ func (s *factory) NewCache(settings []Setting) Cache {
 
 		for typ, attr := range setting.CacheAttributes {
 			if typ == SharedCacheType {
-				cfg.shared = s.sharedCache
+				cfg.shared = f.sharedCache
 				cfg.sharedTTL = attr.TTL
 			} else if typ == LocalCacheType {
-				cfg.local = s.localCache
+				cfg.local = f.localCache
 				cfg.localTTL = attr.TTL
 			}
 		}
@@ -112,32 +123,73 @@ func (s *factory) NewCache(settings []Setting) Cache {
 	}
 
 	return &cache{
+		fid:     f.id,
 		configs: m,
-		onCacheHit: func(prefix string, key string, value interface{}) {
+		pubsub:  f.pubsub,
+		onCacheHit: func(prefix string, key string, count int) {
 			// trigger the callback on cache hitted if necessary
-			if s.onCacheHit != nil {
-				s.onCacheHit(prefix, key, value)
+			if f.onCacheHit != nil {
+				f.onCacheHit(prefix, key, count)
 			}
 		},
-		onCacheMiss: func(prefix string, key string, value interface{}) {
+		onCacheMiss: func(prefix string, key string, count int) {
 			// trigger the callback on cache missed if necessary
-			if s.onCacheMiss != nil {
-				s.onCacheMiss(prefix, key, value)
+			if f.onCacheMiss != nil {
+				f.onCacheMiss(prefix, key, count)
 			}
 		},
-		onLCCostAdd: func(cKey string, value int) {
+		onLCCostAdd: func(cKey string, cost int) {
 			// trigger the callback on local cache added if necessary
-			if s.onLCCostAdd != nil {
+			if f.onLCCostAdd != nil {
 				pfx, key := getPrefixAndKey(cKey)
-				s.onLCCostAdd(pfx, key, value)
+				f.onLCCostAdd(pfx, key, cost)
 			}
 		},
-		onLCCostEvict: func(cKey string, value int) {
+		onLCCostEvict: func(cKey string, cost int) {
 			// trigger the callback on local cache evicted if necessary
-			if s.onLCCostEvict != nil {
+			if f.onLCCostEvict != nil {
 				pfx, key := getPrefixAndKey(cKey)
-				s.onLCCostEvict(pfx, key, value)
+				f.onLCCostEvict(pfx, key, cost)
 			}
 		},
 	}
+}
+
+func (f *factory) Close() {
+	f.closeOnce.Do(func() {
+		// close subscribing
+		f.pubsub.Close()
+		// wait for all goroutines stopped
+		f.wg.Wait()
+	})
+}
+
+func (f *factory) subscribeEvictEvents(ctx context.Context) {
+	if f.pubsub == nil || f.localCache == nil {
+		// do nothing
+		return
+	}
+
+	f.wg.Add(1)
+	go func() {
+		defer f.wg.Done()
+
+		// listen to evicting key events
+		for mess := range f.pubsub.Sub(ctx, evictTopic) {
+			event := evictEvent{}
+			err := json.Unmarshal(mess.Content(), &event)
+			if err != nil {
+				// TOOD: forward error messages outside
+				continue
+			}
+
+			// skip self cases
+			if event.ID == f.id {
+				continue
+			}
+
+			// evicting
+			f.localCache.Del(ctx, event.Keys...)
+		}
+	}()
 }

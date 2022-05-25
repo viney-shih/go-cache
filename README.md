@@ -18,10 +18,57 @@ Considering the flexibility, efficiency and consistency, we starts to build up o
 
 ## Data flow
 ### Load the cache with `Cache-Aside` strategy
-![load](./doc/img/get.png)
+```mermaid
+sequenceDiagram
+    participant APP as Application
+    participant M as go-cache
+    participant L as Local Cache
+    participant S as Shared Cache
+    participant R as Resource (Microservice / DB)
+    
+    APP ->> M: Cache.Get() / Cache.MGet()
+    alt Local Cache hit
+    	M ->> L: Adapter.MGet()
+    	L -->> M: {[]Value, error}
+    	M -->> APP: return
+    else Local Cache miss but Shared Cache hit
+   		M ->> L: Adapter.MGet()
+   		L -->> M: cache miss
+    	M ->> S: Adapter.MGet()
+    	S -->> M: {[]Value, error}
+    	M ->> L: Adapter.MSet()
+      M -->> APP: return
+    else All miss
+    	M ->> L: Adapter.MGet()
+    	L -->> M: cache miss
+    	M ->> S: Adapter.MGet()
+    	S -->> M: cache miss
+    	M ->> R: OneTimeGetterFunc() / MGetterFunc()
+    	R -->> M: return from getter
+    	M ->> S: Adapter.MSet()
+    	M ->> L: Adapter.MSet()
+    	M -->> APP: return
+    end
+    
+```
 
 ### Evict the cache
-![evict](./doc/img/del.png)
+```mermaid
+sequenceDiagram
+    participant APP as Application
+    participant M as go-cache
+    participant L as Local Cache
+    participant S as Shared Cache
+    participant PS as PubSub
+    
+    APP ->> M: Cache.Del()
+    M ->> S: Adapter.Del()
+    S -->> M: return error if necessary
+    M ->> L: Adapter.Del()
+    L -->> M: return error if necessary
+    M ->> PS: Pubsub.Pub() (broadcast key eviction)
+    M -->> APP: return nil or error
+```
 
 ## Installation
 ```sh

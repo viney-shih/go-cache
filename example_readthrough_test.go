@@ -48,7 +48,7 @@ func ExampleCache_GetByFunc() {
 	// &{value2 2}
 }
 
-func ExampleService_Create_mGetter() {
+func ExampleFactory_NewCache_mGetter() {
 	tinyLfu := cache.NewTinyLFU(10000)
 	rds := cache.NewRedis(redis.NewRing(&redis.RingOptions{
 		Addrs: map[string]string{

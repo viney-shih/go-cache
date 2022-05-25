@@ -2,19 +2,21 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
-	"strings"
 	"time"
 
 	"golang.org/x/sync/singleflight"
 )
 
 type cache struct {
+	fid           string // id from factory
 	configs       map[string]*config
-	onCacheHit    CallbackFunc
-	onCacheMiss   CallbackFunc
+	onCacheHit    func(prefix string, key string, count int)
+	onCacheMiss   func(prefix string, key string, count int)
 	onLCCostAdd   func(key string, cost int)
 	onLCCostEvict func(key string, cost int)
+	pubsub        Pubsub
 
 	singleflight singleflight.Group
 }
@@ -213,40 +215,6 @@ func (c *cache) MSet(ctx context.Context, prefix string, keyValues map[string]in
 	return c.refill(ctx, cfg, m)
 }
 
-func customKey(delimiter string, components ...string) string {
-	return strings.Join(components, delimiter)
-}
-
-func getCacheKey(pfx, key string) string {
-	return customKey(delimiter, packageKey, pfx, key)
-}
-
-func getCacheKeys(pfx string, keys []string) []string {
-	cacheKeys := make([]string, len(keys))
-	for i, k := range keys {
-		cacheKeys[i] = getCacheKey(pfx, k)
-	}
-
-	return cacheKeys
-}
-
-func getPrefixAndKey(cacheKey string) (string, string) {
-	// cacheKey = packageKey + prefix + key
-	idx := strings.Index(cacheKey, delimiter)
-	if idx < 0 {
-		return cacheKey, ""
-	}
-
-	// mixedKey = prefix + key
-	mixedKey := cacheKey[idx+len(delimiter):]
-	idx = strings.Index(mixedKey, delimiter)
-	if idx < 0 {
-		return mixedKey, ""
-	}
-
-	return mixedKey[:idx], mixedKey[idx+len(delimiter):]
-}
-
 func getKeyIndex(keys []string) map[string]int {
 	keyIdx := map[string]int{}
 	for i, k := range keys {
@@ -373,9 +341,26 @@ func (c *cache) del(ctx context.Context, cfg *config, keys ...string) error {
 		if err := cfg.local.Del(ctx, keys...); err != nil {
 			return err
 		}
+
+		c.publishEvictEvents(ctx, keys...)
 	}
 
 	return nil
+}
+
+func (c *cache) publishEvictEvents(ctx context.Context, keys ...string) error {
+	if c.pubsub == nil {
+		// do nothing
+		return nil
+	}
+
+	event := evictEvent{ID: c.fid, Keys: keys}
+	bs, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	return c.pubsub.Pub(ctx, evictTopic, bs)
 }
 
 type result struct {
