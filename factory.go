@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -35,6 +37,7 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 	}
 
 	f := &factory{
+		id:            uuid.New().String(),
 		sharedCache:   sharedCache,
 		localCache:    localCache,
 		pubsub:        o.pubsub,
@@ -64,6 +67,7 @@ type factory struct {
 	onLCCostAdd   func(prefix string, key string, cost int)
 	onLCCostEvict func(prefix string, key string, cost int)
 
+	id        string
 	closeOnce sync.Once
 	wg        sync.WaitGroup
 }
@@ -119,6 +123,7 @@ func (f *factory) NewCache(settings []Setting) Cache {
 	}
 
 	return &cache{
+		fid:     f.id,
 		configs: m,
 		pubsub:  f.pubsub,
 		onCacheHit: func(prefix string, key string, count int) {
@@ -171,8 +176,20 @@ func (f *factory) subscribeEvictEvents(ctx context.Context) {
 
 		// listen to evicting key events
 		for mess := range f.pubsub.Sub(ctx, evictTopic) {
-			cKey := string(mess.Content())
-			f.localCache.Del(ctx, cKey)
+			event := evictEvent{}
+			err := json.Unmarshal(mess.Content(), &event)
+			if err != nil {
+				// TOOD: forward error messages outside
+				continue
+			}
+
+			// skip self cases
+			if event.ID == f.id {
+				continue
+			}
+
+			// evicting
+			f.localCache.Del(ctx, event.Keys...)
 		}
 	}()
 }

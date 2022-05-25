@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 )
 
 type cache struct {
+	fid           string // id from factory
 	configs       map[string]*config
 	onCacheHit    func(prefix string, key string, count int)
 	onCacheMiss   func(prefix string, key string, count int)
@@ -340,14 +342,25 @@ func (c *cache) del(ctx context.Context, cfg *config, keys ...string) error {
 			return err
 		}
 
-		if c.pubsub != nil {
-			for _, k := range keys {
-				c.pubsub.Pub(ctx, evictTopic, []byte(k))
-			}
-		}
+		c.publishEvictEvents(ctx, keys...)
 	}
 
 	return nil
+}
+
+func (c *cache) publishEvictEvents(ctx context.Context, keys ...string) error {
+	if c.pubsub == nil {
+		// do nothing
+		return nil
+	}
+
+	event := evictEvent{ID: c.fid, Keys: keys}
+	bs, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	return c.pubsub.Pub(ctx, evictTopic, bs)
 }
 
 type result struct {

@@ -11,10 +11,6 @@ const (
 	topicDelim = "#"
 )
 
-var (
-	evictTopic = customKey(topicDelim, packageKey, topicKey, "evict")
-)
-
 func customKey(delimiter string, components ...string) string {
 	return strings.Join(components, delimiter)
 }
