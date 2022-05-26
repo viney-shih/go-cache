@@ -325,6 +325,12 @@ func (c *cache) refill(ctx context.Context, cfg *config, keyBytes map[string][]b
 		); err != nil {
 			return nil
 		}
+
+		keys := []string{}
+		for k := range keyBytes {
+			keys = append(keys, k)
+		}
+		c.publishEvictEvents(ctx, keys...)
 	}
 
 	return nil
