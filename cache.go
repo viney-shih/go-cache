@@ -302,6 +302,8 @@ func (c *cache) load(ctx context.Context, cfg *config, keys ...string) ([]Value,
 				WithOnCostAddFunc(c.onLCCostAdd),
 				WithOnCostEvictFunc(c.onLCCostEvict),
 			)
+
+			c.evictRemoteKeyBytes(ctx, m)
 		}
 	}
 
@@ -325,6 +327,8 @@ func (c *cache) refill(ctx context.Context, cfg *config, keyBytes map[string][]b
 		); err != nil {
 			return nil
 		}
+
+		c.evictRemoteKeyBytes(ctx, keyBytes)
 	}
 
 	return nil
@@ -346,6 +350,15 @@ func (c *cache) del(ctx context.Context, cfg *config, keys ...string) error {
 	}
 
 	return nil
+}
+
+func (c *cache) evictRemoteKeyBytes(ctx context.Context, keyBytes map[string][]byte) error {
+	keys := []string{}
+	for k := range keyBytes {
+		keys = append(keys, k)
+	}
+
+	return c.publishEvictEvents(ctx, keys...)
 }
 
 func (c *cache) publishEvictEvents(ctx context.Context, keys ...string) error {
