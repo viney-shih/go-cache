@@ -36,11 +36,12 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 		unmarshalFunc = o.unmarshalFunc
 	}
 
+	id := uuid.New().String()
 	f := &factory{
-		id:            uuid.New().String(),
+		id:            id,
 		sharedCache:   sharedCache,
 		localCache:    localCache,
-		pubsub:        o.pubsub,
+		mb:            newMessageBroker(id, o.pubsub),
 		marshal:       marshalFunc,
 		unmarshal:     unmarshalFunc,
 		onCacheHit:    o.onCacheHit,
@@ -49,8 +50,8 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 		onLCCostEvict: o.onLCCostEvict,
 	}
 
-	// subscribing if necessary
-	f.subscribeEvictEvents(context.TODO())
+	// subscribing events
+	f.mb.listen(context.TODO(), []EventType{EventTypeEvict}, f.subscribedEventsHandler())
 
 	return f
 }
@@ -58,7 +59,7 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 type factory struct {
 	sharedCache Adapter
 	localCache  Adapter
-	pubsub      Pubsub
+	mb          *messageBroker
 
 	marshal       MarshalFunc
 	unmarshal     UnmarshalFunc
@@ -69,7 +70,6 @@ type factory struct {
 
 	id        string
 	closeOnce sync.Once
-	wg        sync.WaitGroup
 }
 
 func (f *factory) NewCache(settings []Setting) Cache {
@@ -123,9 +123,8 @@ func (f *factory) NewCache(settings []Setting) Cache {
 	}
 
 	return &cache{
-		fid:     f.id,
 		configs: m,
-		pubsub:  f.pubsub,
+		mb:      f.mb,
 		onCacheHit: func(prefix string, key string, count int) {
 			// trigger the callback on cache hitted if necessary
 			if f.onCacheHit != nil {
@@ -157,39 +156,26 @@ func (f *factory) NewCache(settings []Setting) Cache {
 
 func (f *factory) Close() {
 	f.closeOnce.Do(func() {
-		// close subscribing
-		f.pubsub.Close()
-		// wait for all goroutines stopped
-		f.wg.Wait()
+		f.mb.close()
 	})
 }
 
-func (f *factory) subscribeEvictEvents(ctx context.Context) {
-	if f.pubsub == nil || f.localCache == nil {
-		// do nothing
-		return
-	}
-
-	f.wg.Add(1)
-	go func() {
-		defer f.wg.Done()
-
-		// listen to evicting key events
-		for mess := range f.pubsub.Sub(ctx, evictTopic) {
-			event := evictEvent{}
-			err := json.Unmarshal(mess.Content(), &event)
-			if err != nil {
-				// TOOD: forward error messages outside
-				continue
-			}
-
-			// skip self cases
-			if event.ID == f.id {
-				continue
-			}
-
-			// evicting
-			f.localCache.Del(ctx, event.Keys...)
+func (f *factory) subscribedEventsHandler() func(ctx context.Context, e *event, err error) {
+	return func(ctx context.Context, e *event, err error) {
+		if err == ErrSelfEvent {
+			// do nothing
+			return
+		} else if err != nil {
+			// TOOD: forward error messages outside
+			return
 		}
-	}()
+
+		switch e.Type {
+		case EventTypeEvict:
+			if f.localCache != nil {
+				// evict local caches
+				f.localCache.Del(ctx, e.Body.Keys...)
+			}
+		}
+	}
 }
