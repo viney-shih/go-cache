@@ -17,8 +17,9 @@ const (
 )
 
 var (
-	mockRdsCTX   = context.Background()
-	mockRdsBytes = []byte(mockRdsString)
+	mockRdsCTX     = context.Background()
+	mockRdsBytes   = []byte(mockRdsString)
+	mockEvictTopic = EventTypeEvict.Topic()
 )
 
 type redisSuite struct {
@@ -239,7 +240,7 @@ func (s *redisSuite) TestDel() {
 }
 
 func (s *redisSuite) TestPub() {
-	sub := s.rds.ring.Subscribe(mockRdsCTX, evictTopic)
+	sub := s.rds.ring.Subscribe(mockRdsCTX, mockEvictTopic)
 	pause := make(chan struct{})
 	wg := &sync.WaitGroup{}
 
@@ -256,7 +257,7 @@ func (s *redisSuite) TestPub() {
 
 	time.Sleep(time.Millisecond * 50)
 	<-pause
-	s.Require().NoError(s.rds.Pub(mockRdsCTX, evictTopic, []byte(mockRdsPayload)))
+	s.Require().NoError(s.rds.Pub(mockRdsCTX, mockEvictTopic, []byte(mockRdsPayload)))
 
 	wg.Wait()
 }
@@ -271,7 +272,7 @@ func (s *redisSuite) TestSub() {
 		defer wg.Done()
 
 		close(pause)
-		for mess := range s.rds.Sub(mockRdsCTX, evictTopic) {
+		for mess := range s.rds.Sub(mockRdsCTX, mockEvictTopic) {
 			s.Require().Equal([]byte(mockRdsPayload), mess.Content())
 			close(pause2)
 		}
@@ -279,7 +280,7 @@ func (s *redisSuite) TestSub() {
 
 	time.Sleep(time.Millisecond * 50)
 	<-pause
-	s.Require().NoError(s.ring.Publish(mockRdsCTX, evictTopic, []byte(mockRdsPayload)).Err())
+	s.Require().NoError(s.ring.Publish(mockRdsCTX, mockEvictTopic, []byte(mockRdsPayload)).Err())
 
 	<-pause2
 	s.rds.Close()

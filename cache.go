@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"reflect"
 	"time"
 
@@ -10,13 +9,12 @@ import (
 )
 
 type cache struct {
-	fid           string // id from factory
 	configs       map[string]*config
 	onCacheHit    func(prefix string, key string, count int)
 	onCacheMiss   func(prefix string, key string, count int)
 	onLCCostAdd   func(key string, cost int)
 	onLCCostEvict func(key string, cost int)
-	pubsub        Pubsub
+	mb            *messageBroker
 
 	singleflight singleflight.Group
 }
@@ -303,7 +301,7 @@ func (c *cache) load(ctx context.Context, cfg *config, keys ...string) ([]Value,
 				WithOnCostEvictFunc(c.onLCCostEvict),
 			)
 
-			c.evictRemoteKeyBytes(ctx, m)
+			c.evictRemoteKeyMap(ctx, m)
 		}
 	}
 
@@ -328,7 +326,7 @@ func (c *cache) refill(ctx context.Context, cfg *config, keyBytes map[string][]b
 			return nil
 		}
 
-		c.evictRemoteKeyBytes(ctx, keyBytes)
+		c.evictRemoteKeyMap(ctx, keyBytes)
 	}
 
 	return nil
@@ -346,34 +344,41 @@ func (c *cache) del(ctx context.Context, cfg *config, keys ...string) error {
 			return err
 		}
 
-		c.publishEvictEvents(ctx, keys...)
+		c.evictRemoteKeys(ctx, keys...)
 	}
 
 	return nil
 }
 
-func (c *cache) evictRemoteKeyBytes(ctx context.Context, keyBytes map[string][]byte) error {
-	keys := []string{}
-	for k := range keyBytes {
-		keys = append(keys, k)
-	}
-
-	return c.publishEvictEvents(ctx, keys...)
-}
-
-func (c *cache) publishEvictEvents(ctx context.Context, keys ...string) error {
-	if c.pubsub == nil {
-		// do nothing
+func (c *cache) evictRemoteKeyMap(ctx context.Context, keyM map[string][]byte) error {
+	if !c.mb.registered() {
+		// no pubsub, do nothing
 		return nil
 	}
 
-	event := evictEvent{ID: c.fid, Keys: keys}
-	bs, err := json.Marshal(event)
-	if err != nil {
-		return err
+	keys := make([]string, len(keyM))
+	i := 0
+	for k := range keyM {
+		keys[i] = k
+		i++
 	}
 
-	return c.pubsub.Pub(ctx, evictTopic, bs)
+	return c.evictRemoteKeys(ctx, keys...)
+}
+
+func (c *cache) evictRemoteKeys(ctx context.Context, keys ...string) error {
+	if !c.mb.registered() {
+		// no pubsub, do nothing
+		return nil
+	}
+
+	return c.mb.send(ctx, event{
+		Type: EventTypeEvict,
+		Body: eventBody{
+			FID:  c.mb.fid,
+			Keys: keys,
+		},
+	})
 }
 
 type result struct {
