@@ -166,7 +166,7 @@ func (f *factory) subscribedEventsHandler() func(ctx context.Context, e *event, 
 			// do nothing
 			return
 		} else if err != nil {
-			// TOOD: forward error messages outside
+			// TODO: forward error messages outside
 			return
 		}
 

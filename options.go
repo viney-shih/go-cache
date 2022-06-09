@@ -22,7 +22,7 @@ type serviceOptions struct {
 	pubsub        Pubsub
 }
 
-// WithMarshalFunc sets up the specified marshal funciton.
+// WithMarshalFunc sets up the specified marshal function.
 // Needs to consider with unmarshal function at the same time.
 func WithMarshalFunc(f MarshalFunc) ServiceOptions {
 	return func(opts *serviceOptions) {
@@ -30,7 +30,7 @@ func WithMarshalFunc(f MarshalFunc) ServiceOptions {
 	}
 }
 
-// WithUnmarshalFunc sets up the specified unmarshal funciton.
+// WithUnmarshalFunc sets up the specified unmarshal function.
 // Needs to consider with marshal function at the same time.
 func WithUnmarshalFunc(f UnmarshalFunc) ServiceOptions {
 	return func(opts *serviceOptions) {

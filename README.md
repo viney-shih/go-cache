@@ -1,4 +1,12 @@
 # go-cache
+
+[![Build Status](https://app.travis-ci.com/viney-shih/go-cache.svg?branch=master)](https://app.travis-ci.com/viney-shih/go-cache)
+[![Go Report Card](https://goreportcard.com/badge/github.com/viney-shih/go-cache)](https://goreportcard.com/report/github.com/viney-shih/go-cache)
+[![codecov](https://codecov.io/gh/viney-shih/go-cache/branch/master/graph/badge.svg?token=QKRiNSU5Gn)](https://codecov.io/gh/viney-shih/go-cache)
+[![Coverage Status](https://coveralls.io/repos/github/viney-shih/go-cache/badge.svg?branch=master)](https://coveralls.io/github/viney-shih/go-cache?branch=master)
+[![License](http://img.shields.io/badge/License-Apache_2-red.svg?style=flat)](http://www.apache.org/licenses/LICENSE-2.0)
+
+
 A library of mixed version of **key:value** store interacts with private (in-memory) cache and shared cache (i.e. Redis) in Go. It provides `Cache-Aside` strategy when dealing with both, and maintains the consistency of private cache between distributed systems by `Pub-Sub` pattern.
 
 Caching is a common technique that aims to improve the performance and scalability of a system. It does this by temporarily copying frequently accessed data to fast storage close to the application. Distributed applications typically implement either or both of the following strategies when caching data:
@@ -29,28 +37,28 @@ sequenceDiagram
     
     APP ->> M: Cache.Get() / Cache.MGet()
     alt Local Cache hit
-    	M ->> L: Adapter.MGet()
-    	L -->> M: {[]Value, error}
-    	M -->> APP: return
+        M ->> L: Adapter.MGet()
+        L -->> M: {[]Value, error}
+        M -->> APP: return
     else Local Cache miss but Shared Cache hit
-   		M ->> L: Adapter.MGet()
-   		L -->> M: cache miss
-    	M ->> S: Adapter.MGet()
-    	S -->> M: {[]Value, error}
-    	M ->> L: Adapter.MSet()
-      M -->> APP: return
+        M ->> L: Adapter.MGet()
+        L -->> M: cache miss
+        M ->> S: Adapter.MGet()
+        S -->> M: {[]Value, error}
+        M ->> L: Adapter.MSet()
+        M -->> APP: return
     else All miss
-    	M ->> L: Adapter.MGet()
-    	L -->> M: cache miss
-    	M ->> S: Adapter.MGet()
-    	S -->> M: cache miss
-    	M ->> R: OneTimeGetterFunc() / MGetterFunc()
-    	R -->> M: return from getter
-    	M ->> S: Adapter.MSet()
-    	M ->> L: Adapter.MSet()
-    	M -->> APP: return
+        M ->> L: Adapter.MGet()
+        L -->> M: cache miss
+        M ->> S: Adapter.MGet()
+        S -->> M: cache miss
+        M ->> R: OneTimeGetterFunc() / MGetterFunc()
+        R -->> M: return from getter
+        M ->> S: Adapter.MSet()
+        M ->> L: Adapter.MSet()
+        M -->> APP: return
     end
-    
+
 ```
 
 ### Evict the cache
@@ -220,3 +228,6 @@ func ExampleService_Create_mGetter() {
 - https://docs.microsoft.com/en-us/azure/architecture/best-practices/caching
 - https://github.com/vmihailenco/go-cache-benchmark
 - https://github.com/go-redis/cache
+
+## License
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)
