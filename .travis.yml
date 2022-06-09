@@ -12,7 +12,7 @@ services:
 before_install:
     - go get github.com/mattn/goveralls
     - docker pull redis:5.0.14-alpine
-    - docker run --name unittest-redis -d redis
+    - docker run --name redis -p 6379:6379 -d redis:5.0.14-alpine
     - docker ps -a
 
 script:
@@ -21,4 +21,4 @@ script:
 after_success:
     - $GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci # upload to `coveralls`
     - bash <(curl -s https://codecov.io/bash) # upload to `codecov`
-    - docker rm -f unittest-redis
+    - docker rm -f redis
