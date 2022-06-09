@@ -1,0 +1,24 @@
+language: go
+
+go:
+    - "1.16"
+    - "1.17"
+    - "1.18"
+    - master
+
+services:
+    - docker
+
+before_install:
+    - go get github.com/mattn/goveralls
+    - docker pull redis:5.0.14-alpine
+    - docker run --name unittest-redis -d redis
+    - docker ps -a
+
+script:
+    - go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+
+after_success:
+    - $GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci # upload to `coveralls`
+    - bash <(curl -s https://codecov.io/bash) # upload to `codecov`
+    - docker rm -f unittest-redis
