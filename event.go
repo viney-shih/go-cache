@@ -84,6 +84,7 @@ func (mb *messageBroker) send(ctx context.Context, e event) error {
 		return nil
 	}
 
+	e.Body.FID = mb.fid
 	bs, err := json.Marshal(e.Body)
 	if err != nil {
 		return err

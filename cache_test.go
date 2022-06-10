@@ -52,6 +52,8 @@ func (s *cacheSuite) TearDownTest() {
 	_ = s.ring.ForEachShard(mockCacheCTX, func(ctx context.Context, client *redis.Client) error {
 		return client.FlushDB(ctx).Err()
 	})
+
+	s.factory.Close()
 }
 
 func TestCacheSuite(t *testing.T) {
