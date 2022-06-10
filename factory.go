@@ -12,6 +12,9 @@ import (
 var (
 	// usedPrefixs records the prefixes registered before
 	usedPrefixs = map[string]struct{}{}
+
+	// decoupling
+	uuidString = uuid.New().String
 )
 
 func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptions) Factory {
@@ -36,7 +39,7 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 		unmarshalFunc = o.unmarshalFunc
 	}
 
-	id := uuid.New().String()
+	id := uuidString()
 	f := &factory{
 		id:            id,
 		sharedCache:   sharedCache,
@@ -172,9 +175,10 @@ func (f *factory) subscribedEventsHandler() func(ctx context.Context, e *event, 
 
 		switch e.Type {
 		case EventTypeEvict:
-			if f.localCache != nil {
+			keys := e.Body.Keys
+			if f.localCache != nil && len(keys) > 0 {
 				// evict local caches
-				f.localCache.Del(ctx, e.Body.Keys...)
+				f.localCache.Del(ctx, keys...)
 			}
 		}
 	}

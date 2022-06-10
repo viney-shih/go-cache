@@ -47,6 +47,8 @@ func (s *redisSuite) TearDownTest() {
 	_ = s.ring.ForEachShard(mockRdsCTX, func(ctx context.Context, client *redis.Client) error {
 		return client.FlushDB(ctx).Err()
 	})
+
+	s.rds.Close()
 }
 
 func TestRedisSuite(t *testing.T) {

@@ -13,6 +13,11 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const (
+	mockFactPfx = "fact-pfx"
+	mockFactKey = "fact-key"
+)
+
 var (
 	mockFactoryCTX = context.Background()
 )
@@ -49,6 +54,8 @@ func (s *factorySuite) TearDownTest() {
 	_ = s.ring.ForEachShard(mockFactoryCTX, func(ctx context.Context, client *redis.Client) error {
 		return client.FlushDB(ctx).Err()
 	})
+
+	s.factory.Close()
 }
 
 func TestFactorySuite(t *testing.T) {
@@ -74,9 +81,104 @@ func (s *factorySuite) TestNewFactoryWithOnlyUnmarshal() {
 }
 
 func (s *factorySuite) TestNewFactoryWithBoth() {
-	ser := NewFactory(s.rds, s.lfu, WithMarshalFunc(xml.Marshal), WithUnmarshalFunc(xml.Unmarshal)).(*factory)
-	s.Require().True(reflect.ValueOf(xml.Marshal).Pointer() == reflect.ValueOf(ser.marshal).Pointer())
-	s.Require().True(reflect.ValueOf(xml.Unmarshal).Pointer() == reflect.ValueOf(ser.unmarshal).Pointer())
+	f := NewFactory(s.rds, s.lfu, WithMarshalFunc(xml.Marshal), WithUnmarshalFunc(xml.Unmarshal)).(*factory)
+	s.Require().True(reflect.ValueOf(xml.Marshal).Pointer() == reflect.ValueOf(f.marshal).Pointer())
+	s.Require().True(reflect.ValueOf(xml.Unmarshal).Pointer() == reflect.ValueOf(f.unmarshal).Pointer())
+}
+
+func (s *factorySuite) TestNewFactoryWithCacheHitAndMiss() {
+	hitCount := 0
+	missCount := 0
+
+	// Due to use share cache only, init factory with NewEmpty()
+	f := NewFactory(s.rds, NewEmpty(),
+		OnCacheHitFunc(func(prefix, key string, count int) {
+			s.Require().Equal(mockFactPfx, prefix)
+			s.Require().Equal(mockFactKey, key)
+			hitCount += count
+		}),
+		OnCacheMissFunc(func(prefix, key string, count int) {
+			s.Require().Equal(mockFactPfx, prefix)
+			s.Require().Equal(mockFactKey, key)
+			missCount += count
+		}),
+	)
+
+	var ret int
+	var stage string
+	c := f.NewCache([]Setting{
+		{
+			Prefix:          mockFactPfx,
+			CacheAttributes: map[Type]Attribute{SharedCacheType: {time.Hour}},
+		},
+	})
+
+	stage = "before"
+	s.Require().Equal(0, hitCount, stage)
+	s.Require().Equal(0, missCount, stage)
+
+	stage = "get and miss"
+	s.Require().Equal(ErrCacheMiss, c.Get(mockFactoryCTX, mockFactPfx, mockFactKey, &ret))
+	s.Require().Equal(0, ret, stage)
+	s.Require().Equal(0, hitCount, stage)
+	s.Require().Equal(1, missCount, stage)
+
+	stage = "set and get"
+	s.Require().NoError(c.Set(mockFactoryCTX, mockFactPfx, mockFactKey, 100))
+	s.Require().NoError(c.Get(mockFactoryCTX, mockFactPfx, mockFactKey, &ret))
+	s.Require().Equal(100, ret, stage)
+	s.Require().Equal(1, hitCount, stage)
+	s.Require().Equal(1, missCount, stage)
+}
+
+func (s *factorySuite) TestNewFactoryWithCostAddAndEvict() {
+	costAdd := 0
+	costEvict := 0
+
+	f := NewFactory(s.rds, s.lfu,
+		OnLocalCacheCostAddFunc(func(prefix, key string, cost int) {
+			s.Require().Equal(mockFactPfx, prefix)
+			s.Require().Equal(mockFactKey, key)
+			costAdd += cost
+		}),
+		OnLocalCacheCostEvictFunc(func(prefix, key string, cost int) {
+			s.Require().Equal(mockFactPfx, prefix)
+			s.Require().Equal(mockFactKey, key)
+			costEvict += cost
+		}),
+	)
+
+	//var ret int
+	var stage string
+	var bs []byte
+	var err error
+	c := f.NewCache([]Setting{
+		{
+			Prefix: mockFactPfx,
+			CacheAttributes: map[Type]Attribute{
+				SharedCacheType: {time.Hour},
+				LocalCacheType:  {10 * time.Second},
+			},
+			MarshalFunc:   json.Marshal,
+			UnmarshalFunc: json.Unmarshal,
+		},
+	})
+
+	stage = "before"
+	s.Require().Equal(0, costAdd, stage)
+	s.Require().Equal(0, costEvict, stage)
+
+	stage = "set"
+	s.Require().NoError(c.Set(mockFactoryCTX, mockFactPfx, mockFactKey, 100))
+	bs, err = json.Marshal(100)
+	s.Require().NoError(err, stage)
+	s.Require().Equal(len(bs), costAdd, stage)
+	s.Require().Equal(0, costEvict, stage)
+
+	stage = "del"
+	s.Require().NoError(c.Del(mockFactoryCTX, mockFactPfx, mockFactKey))
+	s.Require().Equal(len(bs), costAdd, stage)
+	s.Require().Equal(len(bs), costEvict, stage)
 }
 
 func (s *factorySuite) TestNewCacheWithoutCacheType() {

@@ -1,0 +1,142 @@
+package cache
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/stretchr/testify/suite"
+)
+
+const (
+	mockEventPfx  = "event-pfx"
+	mockEventKey  = "event-key"
+	mockEventUUID = "2882-5252"
+)
+
+var (
+	mockEventCTX = context.Background()
+)
+
+type eventSuite struct {
+	suite.Suite
+
+	factory *factory
+	rds     *rds
+	lfu     *tinyLFU
+	ring    *redis.Ring
+	mb      *messageBroker
+}
+
+func (s *eventSuite) SetupSuite() {
+	uuidString = func() string { return mockEventUUID }
+	s.ring = redis.NewRing(&redis.RingOptions{
+		Addrs: map[string]string{
+			"server1": ":6379",
+		},
+	})
+}
+
+func (s *eventSuite) TearDownSuite() {}
+
+func (s *eventSuite) SetupTest() {
+	s.rds = NewRedis(s.ring).(*rds)
+	s.lfu = NewTinyLFU(10000).(*tinyLFU)
+	s.mb = newMessageBroker(mockEventUUID, s.rds)
+	s.factory = NewFactory(s.rds, s.lfu, WithPubSub(s.rds)).(*factory)
+}
+
+func (s *eventSuite) TearDownTest() {
+	// prevent registering twice
+	ClearPrefix()
+	// flush redis
+	_ = s.ring.ForEachShard(mockCacheCTX, func(ctx context.Context, client *redis.Client) error {
+		return client.FlushDB(ctx).Err()
+	})
+
+	s.mb.close()
+	s.factory.Close()
+}
+
+func TestEventSuite(t *testing.T) {
+	suite.Run(t, new(eventSuite))
+}
+
+func (s *eventSuite) TestSubscribedEventsHandlerWithSet() {
+	c := s.factory.NewCache([]Setting{
+		{
+			Prefix: mockEventPfx,
+			CacheAttributes: map[Type]Attribute{
+				SharedCacheType: {time.Hour},
+				LocalCacheType:  {10 * time.Second},
+			},
+		},
+	})
+
+	// Set() will trigger eviction in other machines
+	s.Require().NoError(c.Set(mockEventCTX, mockEventPfx, mockEventKey, 100))
+	time.Sleep(time.Millisecond * 100)
+	val, err := s.lfu.MGet(mockEventCTX, []string{getCacheKey(mockEventPfx, mockEventKey)})
+	s.Require().NoError(err)
+	s.Require().Equal([]Value{{Valid: true, Bytes: []byte("100")}}, val) // make sure the local value existed without impacted
+
+	// trigger invalid event type, ignore it directly
+	s.Require().NoError(s.mb.send(mockEventCTX, event{Type: EventTypeNone}))
+	time.Sleep(time.Millisecond * 100)
+	val, err = s.lfu.MGet(mockEventCTX, []string{getCacheKey(mockEventPfx, mockEventKey)})
+	s.Require().NoError(err)
+	s.Require().Equal([]Value{{Valid: true, Bytes: []byte("100")}}, val)
+
+	// trigger evict event without keys, nothing happend
+	s.Require().NoError(s.mb.send(mockEventCTX, event{
+		Type: EventTypeEvict,
+		Body: eventBody{
+			FID:  "event-from-others",
+			Keys: []string{},
+		},
+	}))
+	time.Sleep(time.Millisecond * 100)
+	val, err = s.lfu.MGet(mockEventCTX, []string{getCacheKey(mockEventPfx, mockEventKey)})
+	s.Require().NoError(err)
+	s.Require().Equal([]Value{{Valid: true, Bytes: []byte("100")}}, val)
+
+	// simulate eviction from other machines
+	s.Require().NoError(s.mb.send(mockEventCTX, event{
+		Type: EventTypeEvict,
+		Body: eventBody{
+			FID:  "event-from-others",
+			Keys: []string{getCacheKey(mockEventPfx, mockEventKey)},
+		},
+	}))
+	time.Sleep(time.Millisecond * 100)
+	val, err = s.lfu.MGet(mockEventCTX, []string{getCacheKey(mockEventPfx, mockEventKey)})
+	s.Require().NoError(err)
+	s.Require().Equal([]Value{{}}, val) // local value evicted
+}
+
+func (s *eventSuite) TestSubscribedEventsHandlerWithDelete() {
+	c := s.factory.NewCache([]Setting{
+		{
+			Prefix: mockEventPfx,
+			CacheAttributes: map[Type]Attribute{
+				SharedCacheType: {time.Hour},
+				LocalCacheType:  {10 * time.Second},
+			},
+		},
+	})
+
+	// Set() will trigger eviction in other machines
+	s.Require().NoError(c.Set(mockEventCTX, mockEventPfx, mockEventKey, 100))
+	time.Sleep(time.Millisecond * 100)
+	val, err := s.lfu.MGet(mockEventCTX, []string{getCacheKey(mockEventPfx, mockEventKey)})
+	s.Require().NoError(err)
+	s.Require().Equal([]Value{{Valid: true, Bytes: []byte("100")}}, val) // make sure the local value existed without impacted
+
+	// Del is the same behavior as Set(), but the value is killed by itself.
+	s.Require().NoError(c.Del(mockEventCTX, mockEventPfx, mockEventKey))
+	time.Sleep(time.Millisecond * 100)
+	val, err = s.lfu.MGet(mockEventCTX, []string{getCacheKey(mockEventPfx, mockEventKey)})
+	s.Require().NoError(err)
+	s.Require().Equal([]Value{{}}, val)
+}
