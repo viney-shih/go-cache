@@ -84,8 +84,10 @@ repos:
     # Go Test
     #
     -   id: go-test-mod
+        args: [-v, -race]
     # -   id: go-test-pkg
     -   id: go-test-repo-mod
+        args: [-v, -race]
     # -   id: go-test-repo-pkg
     # 
     # Go Vet
@@ -116,9 +118,9 @@ repos:
     -   id: go-fmt-repo
         args: [-w]
     -   id: go-imports      # replaces go-fmt
-        args: [-w]
+        args: [--local, github.com/viney-shih, -w]
     -   id: go-imports-repo # replaces go-fmt-repo
-        args: [-w]
+        args: [--local, github.com/viney-shih, -w]
     # 
     # Style Checkers
     #
