@@ -29,6 +29,7 @@ type rds struct {
 	subOnce   sync.Once
 	closeOnce sync.Once
 	messChan  chan Message
+	subMut    sync.Mutex
 }
 
 func (r *rds) MSet(
@@ -111,10 +112,13 @@ func (r *rds) Pub(ctx context.Context, topic string, message []byte) error {
 
 func (r *rds) Sub(ctx context.Context, topic ...string) <-chan Message {
 	r.subOnce.Do(func() {
-		r.subscriber = r.ring.Subscribe(ctx, topic...)
+		subscriber := r.ring.Subscribe(ctx, topic...)
+		r.subMut.Lock()
+		r.subscriber = subscriber
+		r.subMut.Unlock()
 
 		go func() {
-			for mess := range r.subscriber.Channel() {
+			for mess := range subscriber.Channel() {
 				r.messChan <- &rdsMessage{
 					topic:   mess.Channel,
 					content: mess.Payload,
@@ -130,8 +134,12 @@ func (r *rds) Sub(ctx context.Context, topic ...string) <-chan Message {
 
 func (r *rds) Close() {
 	r.closeOnce.Do(func() {
-		if r.subscriber != nil {
-			r.subscriber.Close()
+		r.subMut.Lock()
+		subscriber := r.subscriber
+		r.subMut.Unlock()
+
+		if subscriber != nil {
+			subscriber.Close()
 		}
 	})
 }

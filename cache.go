@@ -374,10 +374,7 @@ func (c *cache) evictRemoteKeys(ctx context.Context, keys ...string) error {
 
 	return c.mb.send(ctx, event{
 		Type: EventTypeEvict,
-		Body: eventBody{
-			FID:  c.mb.fid,
-			Keys: keys,
-		},
+		Body: eventBody{Keys: keys},
 	})
 }
 
