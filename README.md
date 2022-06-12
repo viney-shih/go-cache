@@ -1,6 +1,6 @@
 # go-cache
 
-[![GoDev](https://img.shields.io/badge/go.dev-doc-007d9c?style=flat-square&logo=read-the-docs)](https://pkg.go.dev/github.com/viney-shih/go-cache?tab=doc)
+[![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/viney-shih/go-cache?tab=doc)
 [![Build Status](https://app.travis-ci.com/viney-shih/go-cache.svg?branch=master)](https://app.travis-ci.com/viney-shih/go-cache)
 [![Go Report Card](https://goreportcard.com/badge/github.com/viney-shih/go-cache)](https://goreportcard.com/report/github.com/viney-shih/go-cache)
 [![codecov](https://codecov.io/gh/viney-shih/go-cache/branch/master/graph/badge.svg?token=QKRiNSU5Gn)](https://codecov.io/gh/viney-shih/go-cache)
@@ -10,14 +10,14 @@
 
 <p align="center">
   <img src="assets/logo.png" title="viney-shih/go-cache" />
-  <span>Photo by <a href="https://github.com/ashleymcnamara">Ashley McNamara</a>, via <a href="https://github.com/ashleymcnamara/gophers">ashleymcnamara/gophers</a> (CC BY-NC-SA 4.0)</span>
+  <span style="font-size: 14px; font-weight: 400; color: rgba(117, 117, 117, 1); font-family: sohne, "Helvetica Neue", Helvetica, Arial, sans-serif;">Photo by <a href="https://github.com/ashleymcnamara">Ashley McNamara</a>, via <a href="https://github.com/ashleymcnamara/gophers">ashleymcnamara/gophers</a> (CC BY-NC-SA 4.0)</span>
 </p>
 
-A library of mixed version of **key:value** store interacts with private (in-memory) cache and shared cache (i.e. Redis) in Go. It provides `Cache-Aside` strategy when dealing with both, and maintains the consistency of private cache between distributed systems by `Pub-Sub` pattern.
+A flexible multi-layered caching library interacts with **private (in-memory) cache** and **shared cache** (i.e. Redis) in Go. It provides `Cache-Aside` strategy when dealing with both, and maintains the consistency of private cache between distributed systems by `Pub-Sub` pattern.
 
 Caching is a common technique that aims to improve the performance and scalability of a system. It does this by temporarily copying frequently accessed data to fast storage close to the application. Distributed applications typically implement either or both of the following strategies when caching data:
-- Using a `private cache`, where data is held locally on the computer that's running an instance of an application or service.
-- Using a `shared cache`, serving as a common source that can be accessed by multiple processes and machines.
+- Using a **private cache**, where data is held locally on the computer that's running an instance of an application or service.
+- Using a **shared cache**, serving as a common source that can be accessed by multiple processes and machines.
 
 ![Using a local private cache with a shared cache](./doc/img/caching.png)
 Ref: [https://docs.microsoft.com/en-us/azure/architecture/best-practices/images/caching/caching3.png](https://docs.microsoft.com/en-us/azure/architecture/best-practices/images/caching/caching3.png "Using a local private cache with a shared cache")
@@ -25,7 +25,7 @@ Ref: [https://docs.microsoft.com/en-us/azure/architecture/best-practices/images/
 Considering the flexibility, efficiency and consistency, we starts to build up our own framework.
 
 ## Features
-- **Easy to use** : provide a friendly interface to deal with both caching mechnaism by simple configuration. Limit the resource on single instance (pod) as well.
+- **Easy to use** : provide a friendly interface to deal with both caching mechnaism by simple configuration. Limit the size of memory on single instance (pod) as well.
 - **Maintain consistency** : evict keys between distributed systems by `Pub-Sub` pattern.  
 - **Data compression** : provide customized marshal and unmarshal functions.
 - **Fix concurrency issue** : prevent data racing happened on single instance (pod).
@@ -93,7 +93,7 @@ go get github.com/viney-shih/go-cache
 ## Get Started
 ### Basic usage: Set-And-Get
 
-By adopting `singleton` pattern, initialize the Factory in main.go at the beginning, and deliver it to each package or business logic.
+By adopting `Singleton` pattern, initialize the *Factory* in main.go at the beginning, and deliver it to each package or business logic.
 
 ```go
 // Initialize the Factory in main.go
@@ -107,7 +107,7 @@ rds := cache.NewRedis(redis.NewRing(&redis.RingOptions{
 cacheFactory := cache.NewFactory(rds, tinyLfu)
 ```
 
-Treat it as a common **key:value** store like using Redis. But more advanced, it coordinated the usage between multi-level caching mechanism inside.
+Treat it as a common **key:value** store like Redis. But more advanced, it coordinated the usage between multi-layered caching mechanism inside.
 
 ```go
 type Object struct {
@@ -117,7 +117,7 @@ type Object struct {
 
 func Example_setAndGetPattern() {
     // We create a group of cache named "set-and-get".
-    // It uses the shared cache only with TTL of ten seconds.
+    // It uses the shared cache only. Each key will be expired within ten seconds.
     c := cacheFactory.NewCache([]cache.Setting{
         {
             Prefix: "set-and-get",
@@ -159,7 +159,7 @@ func Example_setAndGetPattern() {
 
 ### Advanced usage: `Cache-Aside` strategy
 
-`GetByFunc()` is the easier way to deal with the cache by implementing the getter function in the parameter. When the cache is missing, it will read the data with the getter function and refill it in cache automatically.
+`GetByFunc()` is the easier way to deal with the cache by implementing the **getter function** in the parameter. When the cache is missing, it is going to refill the cache automatically.
 
 ```go
 func ExampleCache_GetByFunc() {
@@ -177,7 +177,7 @@ func ExampleCache_GetByFunc() {
     ctx := context.TODO()
     container2 := &Object{}
     if err := c.GetByFunc(ctx, "get-by-func", "key2", container2, func() (interface{}, error) {
-        // The getter is used to generate data when cache missed, and refill it to the cache automatically..
+        // The getter is used to generate data when cache missed, and refill the cache automatically..
         // You can read from DB or other microservices.
         // Assume we read from MySQL according to the key "key2" and get the value of Object{Str: "value2", Num: 2}
         return Object{Str: "value2", Num: 2}, nil
@@ -192,7 +192,7 @@ func ExampleCache_GetByFunc() {
 }
 ```
 
-`MGetter` is another approaching way to do this. Set this function durning registering the Setting.
+`MGetter` is another approaching way to do this. Set this function durning registering the *Setting*.
 
 ```go
 func ExampleService_Create_mGetter() {
@@ -206,7 +206,7 @@ func ExampleService_Create_mGetter() {
                 cache.LocalCacheType:  {TTL: 10 * time.Minute},
             },
             MGetter: func(keys ...string) (interface{}, error) {
-                // The MGetter is used to generate data when cache missed, and refill it to the cache automatically..
+                // The MGetter is used to generate data when cache missed, and refill the cache automatically..
                 // You can read from DB or other microservices.
                 // Assume we read from MySQL according to the key "key3" and get the value of Object{Str: "value3", Num: 3}
                 // HINT: remember to return as a slice, and the item order needs to consist with the keys in the parameters.

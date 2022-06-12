@@ -88,7 +88,7 @@ func (s *eventSuite) TestSubscribedEventsHandlerWithSet() {
 	s.Require().NoError(err)
 	s.Require().Equal([]Value{{Valid: true, Bytes: []byte("100")}}, val)
 
-	// trigger evict event without keys, nothing happend
+	// trigger evict event without keys, nothing happened
 	s.Require().NoError(s.mb.send(mockEventCTX, event{
 		Type: EventTypeEvict,
 		Body: eventBody{Keys: []string{}},

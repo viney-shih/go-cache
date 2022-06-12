@@ -34,7 +34,7 @@ func ExampleCache_GetByFunc() {
 	ctx := context.TODO()
 	container2 := &Object{}
 	if err := c.GetByFunc(ctx, "get-by-func", "key2", container2, func() (interface{}, error) {
-		// The getter is used to generate data when cache missed, and refill it to the cache automatically..
+		// The getter is used to generate data when cache missed, and refill the cache automatically..
 		// You can read from DB or other microservices.
 		// Assume we read from MySQL according to the key "key2" and get the value of Object{Str: "value2", Num: 2}
 		return Object{Str: "value2", Num: 2}, nil
@@ -68,7 +68,7 @@ func ExampleFactory_NewCache_mGetter() {
 				cache.LocalCacheType:  {TTL: 10 * time.Minute},
 			},
 			MGetter: func(keys ...string) (interface{}, error) {
-				// The MGetter is used to generate data when cache missed, and refill it to the cache automatically..
+				// The MGetter is used to generate data when cache missed, and refill the cache automatically..
 				// You can read from DB or other microservices.
 				// Assume we read from MySQL according to the key "key3" and get the value of Object{Str: "value3", Num: 3}
 				// HINT: remember to return as a slice, and the item order needs to consist with the keys in the parameters.
