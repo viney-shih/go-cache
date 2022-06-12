@@ -51,7 +51,7 @@ func (c *cache) GetByFunc(ctx context.Context, prefix, key string, container int
 		// cache missed once
 		c.onCacheMiss(prefix, key, 1)
 
-		// using oneTimeGetter to implement read-through pattern
+		// using oneTimeGetter to implement Cache-Aside pattern
 		intf, err := getter()
 		if err != nil {
 			return nil, err
@@ -143,7 +143,7 @@ func (c *cache) MGet(ctx context.Context, prefix string, keys ...string) (Result
 		return res, nil
 	}
 
-	// 2. using mGetter to implement read-through pattern
+	// 2. using mGetter to implement Cache-Aside pattern
 	intfs, err := cfg.mGetter(missKeys...)
 	if err != nil {
 		return nil, err

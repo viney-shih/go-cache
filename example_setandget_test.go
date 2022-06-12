@@ -52,11 +52,11 @@ func Example_setAndGetPattern() {
 	if err := c.Get(ctx, "set-and-get", "key", container); err != nil {
 		panic("not expected")
 	}
-	fmt.Println(container) // Output: Object{ Str: "value1", Num: 1}
+	fmt.Println(container) // Object{ Str: "value1", Num: 1}
 
 	// read the cache but failed
 	if err := c.Get(ctx, "set-and-get", "no-such-key", container); err != nil {
-		fmt.Println(err) //  Output: errors.New("cache key is missing")
+		fmt.Println(err) // errors.New("cache key is missing")
 	}
 
 	// Output:
