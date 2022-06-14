@@ -54,7 +54,7 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 	}
 
 	// subscribing events
-	f.mb.listen(context.TODO(), []EventType{EventTypeEvict}, f.subscribedEventsHandler())
+	f.mb.listen(context.TODO(), []eventType{EventTypeEvict}, f.subscribedEventsHandler())
 
 	return f
 }

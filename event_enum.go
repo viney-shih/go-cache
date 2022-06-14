@@ -12,44 +12,44 @@ import (
 )
 
 const (
-	// EventTypeNone is a EventType of type None.
+	// EventTypeNone is a eventType of type None.
 	// Not registered Event by default.
-	EventTypeNone EventType = iota
-	// EventTypeEvict is a EventType of type Evict.
+	EventTypeNone eventType = iota
+	// EventTypeEvict is a eventType of type Evict.
 	// Evict presents eviction event.
 	EventTypeEvict
 )
 
-const _EventTypeName = "NoneEvict"
+const _eventTypeName = "NoneEvict"
 
-var _EventTypeMap = map[EventType]string{
-	EventTypeNone:  _EventTypeName[0:4],
-	EventTypeEvict: _EventTypeName[4:9],
+var _eventTypeMap = map[eventType]string{
+	EventTypeNone:  _eventTypeName[0:4],
+	EventTypeEvict: _eventTypeName[4:9],
 }
 
 // String implements the Stringer interface.
-func (x EventType) String() string {
-	if str, ok := _EventTypeMap[x]; ok {
+func (x eventType) String() string {
+	if str, ok := _eventTypeMap[x]; ok {
 		return str
 	}
-	return fmt.Sprintf("EventType(%d)", x)
+	return fmt.Sprintf("eventType(%d)", x)
 }
 
-var _EventTypeValue = map[string]EventType{
-	_EventTypeName[0:4]:                  EventTypeNone,
-	strings.ToLower(_EventTypeName[0:4]): EventTypeNone,
-	_EventTypeName[4:9]:                  EventTypeEvict,
-	strings.ToLower(_EventTypeName[4:9]): EventTypeEvict,
+var _eventTypeValue = map[string]eventType{
+	_eventTypeName[0:4]:                  EventTypeNone,
+	strings.ToLower(_eventTypeName[0:4]): EventTypeNone,
+	_eventTypeName[4:9]:                  EventTypeEvict,
+	strings.ToLower(_eventTypeName[4:9]): EventTypeEvict,
 }
 
-// ParseEventType attempts to convert a string to a EventType.
-func ParseEventType(name string) (EventType, error) {
-	if x, ok := _EventTypeValue[name]; ok {
+// ParseeventType attempts to convert a string to a eventType.
+func ParseeventType(name string) (eventType, error) {
+	if x, ok := _eventTypeValue[name]; ok {
 		return x, nil
 	}
 	// Case insensitive parse, do a separate lookup to prevent unnecessary cost of lowercasing a string if we don't need to.
-	if x, ok := _EventTypeValue[strings.ToLower(name)]; ok {
+	if x, ok := _eventTypeValue[strings.ToLower(name)]; ok {
 		return x, nil
 	}
-	return EventType(0), fmt.Errorf("%s is not a valid EventType", name)
+	return eventType(0), fmt.Errorf("%s is not a valid eventType", name)
 }
