@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	// ErrSelfEvent indicates event triggered by itself.
-	ErrSelfEvent = errors.New("event triggered by itself")
+	// errSelfEvent indicates event triggered by itself.
+	errSelfEvent = errors.New("event triggered by itself")
 )
 
 // eventType is an enumeration of events used to communicate with each other via Pubsub.
@@ -127,7 +127,7 @@ func (mb *messageBroker) listen(
 			}
 
 			if e.Body.FID == mb.fid {
-				cb(ctx, &e, ErrSelfEvent)
+				cb(ctx, &e, errSelfEvent)
 				continue
 			}
 
