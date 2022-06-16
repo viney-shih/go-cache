@@ -10,25 +10,25 @@ import (
 )
 
 var (
-	// ErrSelfEvent indicates event triggered by itself.
-	ErrSelfEvent = errors.New("event triggered by itself")
+	// errSelfEvent indicates event triggered by itself.
+	errSelfEvent = errors.New("event triggered by itself")
 )
 
-// EventType is an enumeration of events used to communicate with each other via Pubsub.
+// eventType is an enumeration of events used to communicate with each other via Pubsub.
 /*
 ENUM(
 None // Not registered Event by default.
 Evict // Evict presents eviction event.
 )
 */
-type EventType int32
+type eventType int32
 
-var regTopicEventMap map[string]EventType
+var regTopicEventMap map[string]eventType
 
 func init() {
-	regTopicEventMap = map[string]EventType{}
+	regTopicEventMap = map[string]eventType{}
 
-	for typ := range _EventTypeMap {
+	for typ := range _eventTypeMap {
 		if typ == EventTypeNone {
 			continue
 		}
@@ -38,12 +38,12 @@ func init() {
 }
 
 // Topic generates the topic for specified event.
-func (x EventType) Topic() string {
+func (x eventType) Topic() string {
 	return customKey(topicDelim, packageKey, topicKey, x.String())
 }
 
 type event struct {
-	Type EventType
+	Type eventType
 	Body eventBody
 }
 
@@ -94,7 +94,7 @@ func (mb *messageBroker) send(ctx context.Context, e event) error {
 }
 
 func (mb *messageBroker) listen(
-	ctx context.Context, types []EventType, cb func(context.Context, *event, error),
+	ctx context.Context, types []eventType, cb func(context.Context, *event, error),
 ) {
 	if !mb.registered() {
 		return
@@ -127,7 +127,7 @@ func (mb *messageBroker) listen(
 			}
 
 			if e.Body.FID == mb.fid {
-				cb(ctx, &e, ErrSelfEvent)
+				cb(ctx, &e, errSelfEvent)
 				continue
 			}
 

@@ -54,7 +54,7 @@ func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptio
 	}
 
 	// subscribing events
-	f.mb.listen(context.TODO(), []EventType{EventTypeEvict}, f.subscribedEventsHandler())
+	f.mb.listen(context.TODO(), []eventType{EventTypeEvict}, f.subscribedEventsHandler())
 
 	return f
 }
@@ -165,7 +165,7 @@ func (f *factory) Close() {
 
 func (f *factory) subscribedEventsHandler() func(ctx context.Context, e *event, err error) {
 	return func(ctx context.Context, e *event, err error) {
-		if err == ErrSelfEvent {
+		if err == errSelfEvent {
 			// do nothing
 			return
 		} else if err != nil {
