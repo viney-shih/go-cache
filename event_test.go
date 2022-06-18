@@ -134,3 +134,34 @@ func (s *eventSuite) TestSubscribedEventsHandlerWithDel() {
 	s.Require().NoError(err)
 	s.Require().Equal([]Value{{}}, val)
 }
+
+func (s *eventSuite) TestUnnormalEvent() {
+	c := s.factory.NewCache([]Setting{
+		{
+			Prefix: mockEventPfx,
+			CacheAttributes: map[Type]Attribute{
+				SharedCacheType: {time.Hour},
+				LocalCacheType:  {10 * time.Second},
+			},
+		},
+	})
+
+	// Set() will trigger eviction in other machines
+	s.Require().NoError(c.Set(mockEventCTX, mockEventPfx, mockEventKey, 100))
+	time.Sleep(time.Millisecond * 100)
+	val, err := s.lfu.MGet(mockEventCTX, []string{getCacheKey(mockEventPfx, mockEventKey)})
+	s.Require().NoError(err)
+	s.Require().Equal([]Value{{Valid: true, Bytes: []byte("100")}}, val) // make sure the local value existed without impacted
+
+	// nothing happened due to no handling on such event
+	s.Require().NoError(s.rds.Pub(mockEventCTX, "not-existed", nil))
+
+	// TODO: handle this error in the future
+	// invalid json format.
+	s.Require().NoError(s.rds.Pub(mockEventCTX, EventTypeEvict.Topic(), []byte("")))
+}
+
+func (s *eventSuite) TestListenNoEvents() {
+	mb := newMessageBroker(mockEventUUID, s.rds)
+	s.Require().Equal(errNoEventType, mb.listen(mockEventCTX, []eventType{}, func(ctx context.Context, e *event, err error) {}))
+}
