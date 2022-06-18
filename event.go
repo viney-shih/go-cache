@@ -12,6 +12,8 @@ import (
 var (
 	// errSelfEvent indicates event triggered by itself.
 	errSelfEvent = errors.New("event triggered by itself")
+	// errNoEventType indicates no event types
+	errNoEventType = errors.New("no event types")
 )
 
 // eventType is an enumeration of events used to communicate with each other via Pubsub.
@@ -95,13 +97,13 @@ func (mb *messageBroker) send(ctx context.Context, e event) error {
 
 func (mb *messageBroker) listen(
 	ctx context.Context, types []eventType, cb func(context.Context, *event, error),
-) {
+) error {
 	if !mb.registered() {
-		return
+		return nil
 	}
 
 	if len(types) == 0 {
-		return
+		return errNoEventType
 	}
 
 	topics := make([]string, len(types))
@@ -134,4 +136,6 @@ func (mb *messageBroker) listen(
 			cb(ctx, &e, nil)
 		}
 	}()
+
+	return nil
 }
