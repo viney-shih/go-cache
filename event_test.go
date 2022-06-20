@@ -162,6 +162,8 @@ func (s *eventSuite) TestUnnormalEvent() {
 }
 
 func (s *eventSuite) TestListenNoEvents() {
-	mb := newMessageBroker(mockEventUUID, s.rds)
+	rds := NewRedis(s.ring).(*rds)
+	mb := newMessageBroker(mockEventUUID, rds)
 	s.Require().Equal(errNoEventType, mb.listen(mockEventCTX, []eventType{}, func(ctx context.Context, e *event, err error) {}))
+	mb.close()
 }
