@@ -6,6 +6,7 @@
 [![codecov](https://codecov.io/gh/viney-shih/go-cache/branch/master/graph/badge.svg?token=QKRiNSU5Gn)](https://codecov.io/gh/viney-shih/go-cache)
 [![Coverage Status](https://coveralls.io/repos/github/viney-shih/go-cache/badge.svg?branch=master)](https://coveralls.io/github/viney-shih/go-cache?branch=master)
 [![Maintainability](https://api.codeclimate.com/v1/badges/5b70576957b8af88de6e/maintainability)](https://codeclimate.com/github/viney-shih/go-cache/maintainability)
+[![Sourcegraph](https://sourcegraph.com/github.com/viney-shih/go-cache/-/badge.svg)](https://sourcegraph.com/github.com/viney-shih/go-cache?badge)
 [![License](http://img.shields.io/badge/License-Apache_2-red.svg?style=flat)](http://www.apache.org/licenses/LICENSE-2.0)
 
 <p align="center">
