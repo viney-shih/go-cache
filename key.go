@@ -1,6 +1,9 @@
 package cache
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 const (
 	packageKey = "ca"
@@ -11,12 +14,32 @@ const (
 	topicDelim = "#"
 )
 
+var (
+	regPkgKey = packageKey
+	// regKeyOnce limits key registeration happening once
+	regKeyOnce = sync.Once{}
+)
+
+func registerKey(pkgKey string) {
+	regKeyOnce.Do(func() {
+		regPkgKey = pkgKey
+	})
+}
+
 func customKey(delimiter string, components ...string) string {
 	return strings.Join(components, delimiter)
 }
 
+func getTopic(topic string) string {
+	return customKey(topicDelim, regPkgKey, topicKey, topic)
+}
+
 func getCacheKey(pfx, key string) string {
-	return customKey(cacheDelim, packageKey, pfx, key)
+	if regPkgKey == "" {
+		return customKey(cacheDelim, pfx, key)
+	}
+
+	return customKey(cacheDelim, regPkgKey, pfx, key)
 }
 
 func getCacheKeys(pfx string, keys []string) []string {
@@ -29,10 +52,15 @@ func getCacheKeys(pfx string, keys []string) []string {
 }
 
 func getPrefixAndKey(cacheKey string) (string, string) {
-	// cacheKey = packageKey + prefix + key
+	// 1) cacheKey = regPkgKey + prefix + key (normal case)
+	// 2) cacheKey = prefix + key (if customized package key is empty)
 	idx := strings.Index(cacheKey, cacheDelim)
 	if idx < 0 {
-		return cacheKey, ""
+		return cacheKey, "" // should not happen
+	}
+
+	if regPkgKey == "" {
+		return cacheKey[:idx], cacheKey[idx+len(cacheDelim):]
 	}
 
 	// mixedKey = prefix + key

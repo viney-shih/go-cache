@@ -8,11 +8,11 @@ type MarshalFunc func(interface{}) ([]byte, error)
 // The default is json.Unmarshal
 type UnmarshalFunc func([]byte, interface{}) error
 
-// ServiceOptions is an alias for functional argument.
-type ServiceOptions func(opts *serviceOptions)
+// FactoryOptions is an alias for functional argument.
+type FactoryOptions func(opts *factoryOptions)
 
-// serviceOptions contains all options which will be applied when calling New().
-type serviceOptions struct {
+// factoryOptions contains all options which will be applied when calling NewFactory().
+type factoryOptions struct {
 	marshalFunc   MarshalFunc
 	unmarshalFunc UnmarshalFunc
 	onCacheHit    func(prefix string, key string, count int)
@@ -24,57 +24,57 @@ type serviceOptions struct {
 
 // WithMarshalFunc sets up the specified marshal function.
 // Needs to consider with unmarshal function at the same time.
-func WithMarshalFunc(f MarshalFunc) ServiceOptions {
-	return func(opts *serviceOptions) {
+func WithMarshalFunc(f MarshalFunc) FactoryOptions {
+	return func(opts *factoryOptions) {
 		opts.marshalFunc = f
 	}
 }
 
 // WithUnmarshalFunc sets up the specified unmarshal function.
 // Needs to consider with marshal function at the same time.
-func WithUnmarshalFunc(f UnmarshalFunc) ServiceOptions {
-	return func(opts *serviceOptions) {
+func WithUnmarshalFunc(f UnmarshalFunc) FactoryOptions {
+	return func(opts *factoryOptions) {
 		opts.unmarshalFunc = f
 	}
 }
 
 // WithPubSub is used to evict keys in local cache
-func WithPubSub(pb Pubsub) ServiceOptions {
-	return func(opts *serviceOptions) {
+func WithPubSub(pb Pubsub) FactoryOptions {
+	return func(opts *factoryOptions) {
 		opts.pubsub = pb
 	}
 }
 
 // OnCacheHitFunc sets up the callback function on cache hitted
-func OnCacheHitFunc(f func(prefix string, key string, count int)) ServiceOptions {
-	return func(opts *serviceOptions) {
+func OnCacheHitFunc(f func(prefix string, key string, count int)) FactoryOptions {
+	return func(opts *factoryOptions) {
 		opts.onCacheHit = f
 	}
 }
 
 // OnCacheMissFunc sets up the callback function on cache missed
-func OnCacheMissFunc(f func(prefix string, key string, count int)) ServiceOptions {
-	return func(opts *serviceOptions) {
+func OnCacheMissFunc(f func(prefix string, key string, count int)) FactoryOptions {
+	return func(opts *factoryOptions) {
 		opts.onCacheMiss = f
 	}
 }
 
 // OnLocalCacheCostAddFunc sets up the callback function on adding the cost of key in local cache
-func OnLocalCacheCostAddFunc(f func(prefix string, key string, cost int)) ServiceOptions {
-	return func(opts *serviceOptions) {
+func OnLocalCacheCostAddFunc(f func(prefix string, key string, cost int)) FactoryOptions {
+	return func(opts *factoryOptions) {
 		opts.onLCCostAdd = f
 	}
 }
 
 // OnLocalCacheCostEvictFunc sets up the callback function on evicting the cost of key in local cache
-func OnLocalCacheCostEvictFunc(f func(prefix string, key string, cost int)) ServiceOptions {
-	return func(opts *serviceOptions) {
+func OnLocalCacheCostEvictFunc(f func(prefix string, key string, cost int)) FactoryOptions {
+	return func(opts *factoryOptions) {
 		opts.onLCCostEvict = f
 	}
 }
 
-func loadServiceOptions(options ...ServiceOptions) *serviceOptions {
-	opts := &serviceOptions{}
+func loadFactoryOptions(options ...FactoryOptions) *factoryOptions {
+	opts := &factoryOptions{}
 	for _, option := range options {
 		option(opts)
 	}

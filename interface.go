@@ -50,7 +50,7 @@ type Factory interface {
 }
 
 // NewFactory returns the Factory initialized in the main.go.
-func NewFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptions) Factory {
+func NewFactory(sharedCache Adapter, localCache Adapter, options ...FactoryOptions) Factory {
 	return newFactory(sharedCache, localCache, options...)
 }
 
@@ -109,4 +109,9 @@ type Result interface {
 // duplicated prefix registration panic might occur due to multiple tests.
 func ClearPrefix() {
 	usedPrefixs = map[string]struct{}{}
+}
+
+// Register registers customized parameters in the package.
+func Register(packageKey string) {
+	registerKey(packageKey)
 }

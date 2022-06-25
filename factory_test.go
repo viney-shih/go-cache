@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -248,40 +247,4 @@ func (s *factorySuite) TestNewCacheWithOnlyUnmarshal() {
 			UnmarshalFunc:   json.Unmarshal,
 		},
 	})
-}
-
-func (s *factorySuite) TestGetPrefixAndKey() {
-	tests := []struct {
-		Desc     string
-		CacheKey string
-		ExpPfx   string
-		ExpKey   string
-	}{
-		{
-			Desc:     "invalid cache key without delimiter",
-			CacheKey: "12345",
-			ExpPfx:   "12345",
-			ExpKey:   "",
-		},
-		{
-			Desc:     "invalid cache key with only one delimiter",
-			CacheKey: fmt.Sprintf("%s%s%s", "123", cacheDelim, "abc"),
-			ExpPfx:   "abc",
-			ExpKey:   "",
-		},
-		{
-			Desc:     "normal case",
-			CacheKey: getCacheKey("prefix", "key"),
-			ExpPfx:   "prefix",
-			ExpKey:   "key",
-		},
-	}
-
-	for _, t := range tests {
-		pfx, key := getPrefixAndKey(t.CacheKey)
-		s.Require().Equal(t.ExpPfx, pfx, t.Desc)
-		s.Require().Equal(t.ExpKey, key, t.Desc)
-
-		s.TearDownTest()
-	}
 }

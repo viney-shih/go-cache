@@ -17,9 +17,9 @@ var (
 	uuidString = uuid.New().String
 )
 
-func newFactory(sharedCache Adapter, localCache Adapter, options ...ServiceOptions) Factory {
+func newFactory(sharedCache Adapter, localCache Adapter, options ...FactoryOptions) Factory {
 	// load options
-	o := loadServiceOptions(options...)
+	o := loadFactoryOptions(options...)
 	// need to specify marshalFunc and unmarshalFunc at the same time
 	if o.marshalFunc == nil && o.unmarshalFunc != nil {
 		panic(errors.New("both of Marshal and Unmarshal functions need to be specified"))

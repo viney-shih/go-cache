@@ -41,7 +41,7 @@ func init() {
 
 // Topic generates the topic for specified event.
 func (x eventType) Topic() string {
-	return customKey(topicDelim, packageKey, topicKey, x.String())
+	return getTopic(x.String())
 }
 
 type event struct {
