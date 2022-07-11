@@ -9,6 +9,7 @@
 [![Sourcegraph](https://sourcegraph.com/github.com/viney-shih/go-cache/-/badge.svg)](https://sourcegraph.com/github.com/viney-shih/go-cache?badge)
 [![License](http://img.shields.io/badge/License-Apache_2-red.svg?style=flat)](http://www.apache.org/licenses/LICENSE-2.0)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fviney-shih%2Fgo-cache.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fviney-shih%2Fgo-cache?ref=badge_shield)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#caches)
 
 <p align="center">
   <img src="assets/logo.png" title="viney-shih/go-cache" />
