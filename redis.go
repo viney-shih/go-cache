@@ -39,7 +39,7 @@ func (r *rds) MSet(
 		return nil
 	}
 
-	_, err := r.ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err := r.ring.WithContext(ctx).Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		// set multiple pairs
 		pairSlice := make([]interface{}, len(keyVals)*2)
 		i := 0
@@ -63,7 +63,7 @@ func (r *rds) MSet(
 }
 
 func (r *rds) MGet(ctx context.Context, keys []string) ([]Value, error) {
-	vals, err := r.ring.MGet(ctx, keys...).Result()
+	vals, err := r.ring.WithContext(ctx).MGet(ctx, keys...).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (r *rds) MGet(ctx context.Context, keys []string) ([]Value, error) {
 }
 
 func (r *rds) Del(ctx context.Context, keys ...string) error {
-	_, err := r.ring.Del(ctx, keys...).Result()
+	_, err := r.ring.WithContext(ctx).Del(ctx, keys...).Result()
 
 	return err
 }
