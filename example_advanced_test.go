@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/viney-shih/go-cache"
 )
@@ -35,6 +36,8 @@ func Example_cacheAsidePattern() {
 				cache.SharedCacheType: {TTL: time.Hour},
 				cache.LocalCacheType:  {TTL: 10 * time.Minute},
 			},
+			MarshalFunc:   msgpack.Marshal,
+			UnmarshalFunc: msgpack.Unmarshal,
 		},
 		{
 			Prefix: "student",
@@ -54,6 +57,8 @@ func Example_cacheAsidePattern() {
 
 				return nil, fmt.Errorf("XD")
 			},
+			MarshalFunc:   cache.Marshal,
+			UnmarshalFunc: cache.Unmarshal,
 		},
 	})
 
