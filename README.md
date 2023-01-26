@@ -175,7 +175,7 @@ func ExampleCache_GetByFunc() {
                 cache.LocalCacheType: {TTL: 10 * time.Minute},
             },
             MarshalFunc:   msgpack.Marshal, // msgpack is from "github.com/vmihailenco/msgpack/v5"
-			UnmarshalFunc: msgpack.Unmarshal,
+            UnmarshalFunc: msgpack.Unmarshal,
         },
     })
 
@@ -218,7 +218,7 @@ func ExampleService_Create_mGetter() {
                 return []Object{{Str: "value3", Num: 3}}, nil
             },
             MarshalFunc:   cache.Marshal,
-			UnmarshalFunc: cache.Unmarshal,
+            UnmarshalFunc: cache.Unmarshal,
         },
     })
 
