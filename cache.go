@@ -144,7 +144,7 @@ func (c *cache) MGet(ctx context.Context, prefix string, keys ...string) (Result
 	}
 
 	// 2. using mGetter to implement Cache-Aside pattern
-	intfs, err := cfg.mGetter(missKeys...)
+	intfs, err := cfg.mGetter(ctx, missKeys...)
 	if err != nil {
 		return nil, err
 	}

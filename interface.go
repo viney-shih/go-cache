@@ -24,7 +24,7 @@ var (
 type OneTimeGetterFunc func() (interface{}, error)
 
 // MGetterFunc should response a slice of elements which has 1-1 mapping with the provided keys
-type MGetterFunc func(keys ...string) (interface{}, error)
+type MGetterFunc func(ctx context.Context, keys ...string) (interface{}, error)
 
 // Type decides which components are used in multi-layer cache structure
 type Type int32
