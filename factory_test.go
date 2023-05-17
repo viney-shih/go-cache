@@ -92,12 +92,12 @@ func (s *factorySuite) TestNewFactoryWithCacheHitAndMiss() {
 
 	// Due to use share cache only, init factory with NewEmpty()
 	f := NewFactory(s.rds, NewEmpty(),
-		OnCacheHitFunc(func(prefix, key string, count int) {
+		OnCacheHitFunc(func(ctx context.Context, prefix, key string, count int) {
 			s.Require().Equal(mockFactPfx, prefix)
 			s.Require().Equal(mockFactKey, key)
 			hitCount += count
 		}),
-		OnCacheMissFunc(func(prefix, key string, count int) {
+		OnCacheMissFunc(func(ctx context.Context, prefix, key string, count int) {
 			s.Require().Equal(mockFactPfx, prefix)
 			s.Require().Equal(mockFactKey, key)
 			missCount += count
@@ -136,12 +136,12 @@ func (s *factorySuite) TestNewFactoryWithCostAddAndEvict() {
 	costEvict := 0
 
 	f := NewFactory(s.rds, s.lfu,
-		OnLocalCacheCostAddFunc(func(prefix, key string, cost int) {
+		OnLocalCacheCostAddFunc(func(ctx context.Context, prefix, key string, cost int) {
 			s.Require().Equal(mockFactPfx, prefix)
 			s.Require().Equal(mockFactKey, key)
 			costAdd += cost
 		}),
-		OnLocalCacheCostEvictFunc(func(prefix, key string, cost int) {
+		OnLocalCacheCostEvictFunc(func(ctx context.Context, prefix, key string, cost int) {
 			s.Require().Equal(mockFactPfx, prefix)
 			s.Require().Equal(mockFactKey, key)
 			costEvict += cost

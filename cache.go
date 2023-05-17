@@ -10,10 +10,10 @@ import (
 
 type cache struct {
 	configs       map[string]*config
-	onCacheHit    func(prefix string, key string, count int)
-	onCacheMiss   func(prefix string, key string, count int)
-	onLCCostAdd   func(key string, cost int)
-	onLCCostEvict func(key string, cost int)
+	onCacheHit    func(ctx context.Context, prefix string, key string, count int)
+	onCacheMiss   func(ctx context.Context, prefix string, key string, count int)
+	onLCCostAdd   func(ctx context.Context, key string, cost int)
+	onLCCostEvict func(ctx context.Context, key string, cost int)
 	mb            *messageBroker
 
 	singleflight singleflight.Group
@@ -44,12 +44,12 @@ func (c *cache) GetByFunc(ctx context.Context, prefix, key string, container int
 
 		// cache hit
 		if cacheVals[0].Valid {
-			c.onCacheHit(prefix, key, 1)
+			c.onCacheHit(ctx, prefix, key, 1)
 			return cacheVals[0].Bytes, nil
 		}
 
 		// cache missed once
-		c.onCacheMiss(prefix, key, 1)
+		c.onCacheMiss(ctx, prefix, key, 1)
 
 		// using oneTimeGetter to implement Cache-Aside pattern
 		intf, err := getter()
@@ -125,12 +125,12 @@ func (c *cache) MGet(ctx context.Context, prefix string, keys ...string) (Result
 		if !cacheVals[i].Valid {
 			missKeys = append(missKeys, k)
 			res.errs[i] = ErrCacheMiss
-			c.onCacheMiss(prefix, k, 1)
+			c.onCacheMiss(ctx, prefix, k, 1)
 			continue
 		}
 
 		res.vals[i] = cacheVals[i].Bytes
-		c.onCacheHit(prefix, k, 1)
+		c.onCacheHit(ctx, prefix, k, 1)
 	}
 
 	// no cache missing

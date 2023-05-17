@@ -97,7 +97,7 @@ func (lfu *tinyLFU) MSet(
 
 		cost := len(b)
 		if o.onCostAdd != nil {
-			o.onCostAdd(key, cost)
+			o.onCostAdd(ctx, key, cost)
 		}
 
 		lfu.lfu.Set(&tinylfu.Item{
@@ -106,7 +106,7 @@ func (lfu *tinyLFU) MSet(
 			ExpireAt: time.Now().Add(t),
 			OnEvict: func() {
 				if o.onCostEvict != nil {
-					o.onCostEvict(key, cost)
+					o.onCostEvict(ctx, key, cost)
 				}
 			},
 		})

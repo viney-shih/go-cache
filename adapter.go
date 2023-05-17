@@ -1,3 +1,11 @@
+/*
+ * @Author: zhuyaohui@zuoyebang.com
+ * @Date: 2023-05-11 21:49:27
+ * @LastEditors: zhuyaohui@zuoyebang.com
+ * @LastEditTime: 2023-05-17 15:37:32
+ * @FilePath: /go-cache/adapter.go
+ * @Description:
+ */
 package cache
 
 import (
@@ -16,19 +24,19 @@ type Adapter interface {
 type MSetOptions func(opts *msetOptions)
 
 type msetOptions struct {
-	onCostAdd   func(key string, cost int)
-	onCostEvict func(key string, cost int)
+	onCostAdd   func(ctx context.Context, key string, cost int)
+	onCostEvict func(ctx context.Context, key string, cost int)
 }
 
 // WithOnCostAddFunc sets up the callback when adding the cache with key and cost.
-func WithOnCostAddFunc(f func(key string, cost int)) MSetOptions {
+func WithOnCostAddFunc(f func(ctx context.Context, key string, cost int)) MSetOptions {
 	return func(opts *msetOptions) {
 		opts.onCostAdd = f
 	}
 }
 
 // WithOnCostEvictFunc sets up the callback when evicting the cache with key and cost.
-func WithOnCostEvictFunc(f func(key string, cost int)) MSetOptions {
+func WithOnCostEvictFunc(f func(ctx context.Context, key string, cost int)) MSetOptions {
 	return func(opts *msetOptions) {
 		opts.onCostEvict = f
 	}

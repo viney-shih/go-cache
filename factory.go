@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -66,10 +67,10 @@ type factory struct {
 
 	marshal       MarshalFunc
 	unmarshal     UnmarshalFunc
-	onCacheHit    func(prefix string, key string, count int)
-	onCacheMiss   func(prefix string, key string, count int)
-	onLCCostAdd   func(prefix string, key string, cost int)
-	onLCCostEvict func(prefix string, key string, cost int)
+	onCacheHit    func(ctx context.Context, prefix string, key string, count int)
+	onCacheMiss   func(ctx context.Context, prefix string, key string, count int)
+	onLCCostAdd   func(ctx context.Context, prefix string, key string, cost int)
+	onLCCostEvict func(ctx context.Context, prefix string, key string, cost int)
 
 	id        string
 	closeOnce sync.Once
@@ -128,30 +129,30 @@ func (f *factory) NewCache(settings []Setting) Cache {
 	return &cache{
 		configs: m,
 		mb:      f.mb,
-		onCacheHit: func(prefix string, key string, count int) {
+		onCacheHit: func(ctx context.Context, prefix string, key string, count int) {
 			// trigger the callback on cache hitted if necessary
 			if f.onCacheHit != nil {
-				f.onCacheHit(prefix, key, count)
+				f.onCacheHit(ctx, prefix, key, count)
 			}
 		},
-		onCacheMiss: func(prefix string, key string, count int) {
+		onCacheMiss: func(ctx context.Context, prefix string, key string, count int) {
 			// trigger the callback on cache missed if necessary
 			if f.onCacheMiss != nil {
-				f.onCacheMiss(prefix, key, count)
+				f.onCacheMiss(ctx, prefix, key, count)
 			}
 		},
-		onLCCostAdd: func(cKey string, cost int) {
+		onLCCostAdd: func(ctx context.Context, cKey string, cost int) {
 			// trigger the callback on local cache added if necessary
 			if f.onLCCostAdd != nil {
 				pfx, key := getPrefixAndKey(cKey)
-				f.onLCCostAdd(pfx, key, cost)
+				f.onLCCostAdd(ctx, pfx, key, cost)
 			}
 		},
-		onLCCostEvict: func(cKey string, cost int) {
+		onLCCostEvict: func(ctx context.Context, cKey string, cost int) {
 			// trigger the callback on local cache evicted if necessary
 			if f.onLCCostEvict != nil {
 				pfx, key := getPrefixAndKey(cKey)
-				f.onLCCostEvict(pfx, key, cost)
+				f.onLCCostEvict(ctx, pfx, key, cost)
 			}
 		},
 	}
@@ -178,6 +179,7 @@ func (f *factory) subscribedEventsHandler() func(ctx context.Context, e *event, 
 			keys := e.Body.Keys
 			if f.localCache != nil && len(keys) > 0 {
 				// evict local caches
+				log.Printf("go-cache evict local cache keys: %v", keys)
 				f.localCache.Del(ctx, keys...)
 			}
 		}
