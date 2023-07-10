@@ -11,9 +11,8 @@ import (
 )
 
 const (
-	maxOffset      = 10 * time.Second
-	defaultSamples = 100000
-	defaultOffset  = -1
+	maxOffset     = 10 * time.Second
+	defaultOffset = -1
 )
 
 type tinyLFU struct {
@@ -26,10 +25,12 @@ type tinyLFU struct {
 
 // NewTinyLFU generates Adapter with tinylfu
 func NewTinyLFU(size int, options ...TinyLFUOptions) Adapter {
-	// number of keys to track frequency
+	// samples are the number of keys to track frequency
 	// TinyLFU works best for small number of keys (~ 100k)
 	// Ref: https://github.com/vmihailenco/go-cache-benchmark
-	samples := defaultSamples
+	// consider the discussing in (https://github.com/ben-manes/caffeine/issues/106),
+	// choose ~10x the cache size as the default value.
+	samples := size * 10
 
 	o := loadtinyLFUOptions(options...)
 	if o.offset != defaultOffset && o.offset < 0 {
