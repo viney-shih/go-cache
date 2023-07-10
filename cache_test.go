@@ -743,7 +743,7 @@ func (s *cacheSuite) TestMGet() {
 						SharedCacheType: {TTL: time.Hour},
 						LocalCacheType:  {TTL: time.Hour},
 					},
-					MGetter: func(keys ...string) (interface{}, error) {
+					MGetter: func(ctx context.Context, keys ...string) (interface{}, error) {
 						s.Require().Equal([]string{"not-existed"}, keys)
 						return []string{"mgetter-existed"}, nil
 					},
@@ -753,7 +753,7 @@ func (s *cacheSuite) TestMGet() {
 					CacheAttributes: map[Type]Attribute{
 						SharedCacheType: {TTL: time.Hour},
 					},
-					MGetter: func(keys ...string) (interface{}, error) {
+					MGetter: func(ctx context.Context, keys ...string) (interface{}, error) {
 						s.Require().Equal([]string{"key", "not-existed"}, keys)
 						return []string{"mgetter-key", "mgetter-existed"}, nil
 					},
@@ -763,7 +763,7 @@ func (s *cacheSuite) TestMGet() {
 					CacheAttributes: map[Type]Attribute{
 						LocalCacheType: {TTL: time.Hour},
 					},
-					MGetter: func(keys ...string) (interface{}, error) {
+					MGetter: func(ctx context.Context, keys ...string) (interface{}, error) {
 						s.Require().Equal([]string{"not-existed"}, keys)
 						return []string{"mgetter-existed"}, nil
 					},
@@ -1050,7 +1050,7 @@ func (s *cacheSuite) TestGet() {
 						SharedCacheType: {TTL: time.Hour},
 						LocalCacheType:  {TTL: time.Hour},
 					},
-					MGetter: func(keys ...string) (interface{}, error) {
+					MGetter: func(ctx context.Context, keys ...string) (interface{}, error) {
 						s.Require().Equal([]string{"not-existed"}, keys)
 						return []string{"mgetter-existed"}, nil
 					},
@@ -1091,7 +1091,7 @@ func (s *cacheSuite) TestGet() {
 						SharedCacheType: {TTL: time.Hour},
 						LocalCacheType:  {TTL: time.Hour},
 					},
-					MGetter: func(keys ...string) (interface{}, error) {
+					MGetter: func(ctx context.Context, keys ...string) (interface{}, error) {
 						s.Require().Equal([]string{"XD"}, keys)
 						return nil, errors.New("XD")
 					},

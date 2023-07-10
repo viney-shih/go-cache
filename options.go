@@ -1,5 +1,7 @@
 package cache
 
+import "golang.org/x/net/context"
+
 // MarshalFunc specifies the algorithm during marshaling the value to bytes.
 // The default is json.Marshal.
 type MarshalFunc func(interface{}) ([]byte, error)
@@ -15,10 +17,10 @@ type FactoryOptions func(opts *factoryOptions)
 type factoryOptions struct {
 	marshalFunc   MarshalFunc
 	unmarshalFunc UnmarshalFunc
-	onCacheHit    func(prefix string, key string, count int)
-	onCacheMiss   func(prefix string, key string, count int)
-	onLCCostAdd   func(prefix string, key string, cost int)
-	onLCCostEvict func(prefix string, key string, cost int)
+	onCacheHit    func(ctx context.Context, prefix string, key string, count int)
+	onCacheMiss   func(ctx context.Context, prefix string, key string, count int)
+	onLCCostAdd   func(ctx context.Context, prefix string, key string, cost int)
+	onLCCostEvict func(ctx context.Context, prefix string, key string, cost int)
 	pubsub        Pubsub
 }
 
@@ -46,28 +48,28 @@ func WithPubSub(pb Pubsub) FactoryOptions {
 }
 
 // OnCacheHitFunc sets up the callback function on cache hitted
-func OnCacheHitFunc(f func(prefix string, key string, count int)) FactoryOptions {
+func OnCacheHitFunc(f func(ctx context.Context, prefix string, key string, count int)) FactoryOptions {
 	return func(opts *factoryOptions) {
 		opts.onCacheHit = f
 	}
 }
 
 // OnCacheMissFunc sets up the callback function on cache missed
-func OnCacheMissFunc(f func(prefix string, key string, count int)) FactoryOptions {
+func OnCacheMissFunc(f func(ctx context.Context, prefix string, key string, count int)) FactoryOptions {
 	return func(opts *factoryOptions) {
 		opts.onCacheMiss = f
 	}
 }
 
 // OnLocalCacheCostAddFunc sets up the callback function on adding the cost of key in local cache
-func OnLocalCacheCostAddFunc(f func(prefix string, key string, cost int)) FactoryOptions {
+func OnLocalCacheCostAddFunc(f func(ctx context.Context, prefix string, key string, cost int)) FactoryOptions {
 	return func(opts *factoryOptions) {
 		opts.onLCCostAdd = f
 	}
 }
 
 // OnLocalCacheCostEvictFunc sets up the callback function on evicting the cost of key in local cache
-func OnLocalCacheCostEvictFunc(f func(prefix string, key string, cost int)) FactoryOptions {
+func OnLocalCacheCostEvictFunc(f func(ctx context.Context, prefix string, key string, cost int)) FactoryOptions {
 	return func(opts *factoryOptions) {
 		opts.onLCCostEvict = f
 	}

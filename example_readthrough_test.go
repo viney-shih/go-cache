@@ -67,7 +67,7 @@ func ExampleFactory_NewCache_mGetter() {
 				cache.SharedCacheType: {TTL: time.Hour},
 				cache.LocalCacheType:  {TTL: 10 * time.Minute},
 			},
-			MGetter: func(keys ...string) (interface{}, error) {
+			MGetter: func(ctx context.Context, keys ...string) (interface{}, error) {
 				// The MGetter is used to generate data when cache missed, and refill the cache automatically..
 				// You can read from DB or other microservices.
 				// Assume we read from MySQL according to the key "key3" and get the value of Object{Str: "value3", Num: 3}
